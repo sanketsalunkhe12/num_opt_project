@@ -1,6 +1,11 @@
 #include "bern_traj/bernstein_trajectory.hpp"
 #include "osqp/osqp.h"
 #include <Eigen/Sparse>
+#include <Eigen/Dense>
+
+using Eigen::MatrixXd;
+using Eigen::Vector2d;
+using std::vector;
 
 BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
 {
@@ -143,7 +148,9 @@ bool BernsteinTrajectory::solveOptimizedTraj(rclcpp::Node::SharedPtr node_ptr, c
     {
         // for each dimension, generate eq and ineq constraints
         QPEqConstraints eq_constraints = generateEqConstraint(dim, goal_wp);
-        QPIneqConstraints ineq_constraints = generateIneqConstraint(dim, goal_wp);
+        std::vector<Eigen::MatrixXd> obs_bps; // TODO: replace with obstacle generation
+        double safe_dist = 0.5; // TODO: maybe change
+        QPIneqConstraints ineq_constraints = generateIneqConstraint(dim, goal_wp, obs_bps, safe_dist);
 
         // combine eq and ineq constraints into one big constraint matrix
         eq_constraints_comb.A.block(dim*controlPtCount*segmentCount, dim*controlPtCount*segmentCount, 
@@ -437,7 +444,7 @@ QPEqConstraints BernsteinTrajectory::generateEqConstraint(int &dimension_, const
     return eq_constraints;
 }
 
-QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp)
+QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp, const std::vector<Eigen::MatrixXd>& obs_bps, double safe_dist)
 {
     /*
         d <= Cx <= f
@@ -450,6 +457,26 @@ QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, c
     int num_ineq_constraint = 0;
     int deriv_order = 2; // inequality on vel and acc
     QPIneqConstraints ineq_constraints;
+    int num_obs = obs_bps.size();
+    int samples_per_segment = 5; // Sampled points per segment for obstacle linearization
+
+    // Get control points
+    std::vector<std::vector<Eigen::VectorXd>> controlPoints;
+    controlPoints.resize(3); // x, y, and z dimensions
+    int order = 0;
+    for (int d = 0; d < 3; d++) {
+        controlPoints[d].resize(segmentCount);
+        for (int i = 0; i < segmentCount; i++) {
+            Eigen::VectorXd controlPoint = Eigen::VectorXd::Zero(controlPtCount);
+            for (int j = 0; j < controlPtCount; j++) {
+                // Use the waypoint attributes (position, velocity, acceleration, jerk)
+                for(int order = 0; order < 4; order++){
+                    controlPoint[j] += (*goal_wp)[i].getConstraint(order, d);
+                }
+            }
+            controlPoints[d][i] = controlPoint;
+        }
+    }
 
     for(int i=0; i<segmentCount; i++)
     {
@@ -458,6 +485,9 @@ QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, c
             num_ineq_constraint += controlPtCount - j;
         }
     }
+
+    // Add obstacle avoidance constraint count
+    num_ineq_constraint += segmentCount * samples_per_segment * num_obs;
 
     if(num_ineq_constraint == 0)
     {
@@ -499,6 +529,48 @@ QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, c
     }
 
     // (2) additional constraints like constant z etc can be added here as ineq_constraints
+
+    // Handle obstacle avoidance constraints
+    for (int i = 0; i < segmentCount; i++) {
+        for (int s = 0; s < samples_per_segment; s++) {
+            double tau = static_cast<double>(s + 1) / (samples_per_segment + 1); // avoid endpoints
+            double t = tau * segmentTime[i];
+            int zero_order = 0;
+            Eigen::VectorXd bernstein = getBernsteinBasis(t, zero_order);
+
+            // Current segment's trajectory control points (x or y dimension)
+            Eigen::VectorXd C_ref = Eigen::VectorXd::Zero(2); // position of C(tau)
+            for (int d = 0; d < 2; d++) {
+                C_ref[d] = controlPoints[d][i].dot(bernstein);
+            }
+
+            // Linearize the obstacle constraints
+            for (int o = 0; o < num_obs; o++) {
+                Eigen::Vector2d obs_pos;
+                for (int d = 0; d < 2; d++) {
+                    obs_pos[d] = obs_bps[o].row(d).dot(bernstein);
+                }
+
+                Eigen::Vector2d diff = C_ref - obs_pos;
+                double norm_sq = diff.squaredNorm();
+
+                if (norm_sq < 1e-6) continue; // skip near-zero gradient cases
+
+                // Gradient: 2 * (C_ref - O)
+                Eigen::RowVectorXd grad = 2.0 * diff.transpose();
+
+                // Add constraint to matrix
+                Eigen::RowVectorXd row = Eigen::RowVectorXd::Zero(controlPtCount * segmentCount);
+                row.segment(i * controlPtCount, controlPtCount) = grad[dimension_] * bernstein.transpose();
+
+                ineq_constraints.C.row(constraintIndex) = row;
+                double rhs = safe_dist * safe_dist - norm_sq;
+                ineq_constraints.d(constraintIndex) = rhs;
+                ineq_constraints.f(constraintIndex) = 1e6; // unbounded above
+                constraintIndex++;
+            }
+        }
+    }
     return ineq_constraints;
 }
 
@@ -716,6 +788,37 @@ Eigen::Vector3d BernsteinTrajectory::calculateJerk(double &time_, int &segmentIn
 Eigen::VectorXd BernsteinTrajectory::getBezierBasis(double &time_, int &order)
 {
     return Eigen::VectorXd();
+}
+
+MatrixXd obs2bp(const Vector2d& obs, int deg, double t0, double tf) {
+    // Converts an obstacle to a bernstein polynomial
+    MatrixXd cpts(2, deg + 1);
+    cpts.row(0).setConstant(obs(0));
+    cpts.row(1).setConstant(obs(1));
+    return cpts;
+}
+
+
+int main() {
+    int deg = 7;
+    double t0 = 0.0;
+    double tf = 30.0;
+
+    vector<Vector2d> obstacles = {
+        {7, 11},
+        {13, 18},
+        {6, 23},
+        {0, 15},
+        {15, 5},
+        {20, 23}
+    };
+
+    for (const auto& obs : obstacles) {
+        MatrixXd polynomial = obs2bp(obs, deg, t0, tf);
+        std::cout << "polynomial:\n" << polynomial << "\n\n";
+    }
+
+    return 0;
 }
 
 
