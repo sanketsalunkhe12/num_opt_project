@@ -30,7 +30,8 @@ class BernsteinTrajectory : public Trajectory
         Eigen::Vector3d getRefAcceleration(double &time_);
         Eigen::Vector3d getRefJerk(double &time_);
 
-        bool initialize(rclcpp::Node::SharedPtr node_ptr, const std::vector<Waypoint> *goal_wp, 
+        bool initialize(//rclcpp::Node::SharedPtr node_ptr, 
+                        const std::vector<Waypoint> *goal_wp, 
                         const nav_msgs::msg::Odometry::ConstSharedPtr msg);
         bool generateTrajectory(const Eigen::Vector3f &xi, const Eigen::Vector3f &xf,
                                 const Eigen::Vector3f &vi, const Eigen::Vector3f &vf,
@@ -76,10 +77,10 @@ class BernsteinTrajectory : public Trajectory
         std::vector<double> segmentTime;
         
         // Bernstein functions
-        bool solveOptimizedTraj(rclcpp::Node::SharedPtr node_ptr, const std::vector<Waypoint> *goal_wp);
+        bool solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr, 
+            const std::vector<Waypoint> *goal_wp);
         
         void generateSegmentTime(const std::vector<Waypoint> *goal_wp);
-        Eigen::MatrixXd getBernCoefficients();
 
         Eigen::MatrixXd generateObjectiveFunction();
         Eigen::MatrixXd generateQMatrix(double &time_);
@@ -92,18 +93,12 @@ class BernsteinTrajectory : public Trajectory
         QPIneqConstraints generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp);
 
         // solving OSQP problem
-        bool threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, QPIneqConstraints &ineq_constraints, 
-                                rclcpp::Node::SharedPtr node_ptr);
+        bool threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, QPIneqConstraints &ineq_constraints);//, 
+                                // rclcpp::Node::SharedPtr node_ptr);
         bool combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraints &eq_constraints_comb, 
-                            QPIneqConstraints &ineq_constraints_comb, rclcpp::Node::SharedPtr node_ptr);
+                            QPIneqConstraints &ineq_constraints_comb);//, rclcpp::Node::SharedPtr node_ptr);
 
-        
-        double getBernstein(int n, int r, double time);
-        
-        Eigen::VectorXd getConvolutionVector();
-         
-
-        double getSegmentTime(int segIdx_);
+        // post optimization
         void calculateTrajectory();
 
         Eigen::Vector3d calculatePosition(double &time_, int &segmentIndex);
@@ -112,6 +107,13 @@ class BernsteinTrajectory : public Trajectory
         Eigen::Vector3d calculateJerk(double &time_, int &segmentIndex);
 
         Eigen::VectorXd getBezierBasis(double &time_, int &order);
+
+                
+        double getBernstein(int n, int r, double time);
+        
+        Eigen::VectorXd getConvolutionVector();
+        double getSegmentTime(int segIdx_);
+        Eigen::MatrixXd getBernCoefficients();
 
 };
 
