@@ -56,13 +56,25 @@ list(APPEND TRAJECTORIES
   src/bernstein_trajectory.cpp
   )
 
-add_library(TrjectoryLib SHARED ${TRAJECTORIES})
-ament_target_dependencies(TrjectoryLib ${dependencies})
-target_link_libraries(TrjectoryLib ${OSQP_INCLUDE_DIR} osqp::osqp osqp::osqpstatic)
+add_library(trjectoryLibNumOpt SHARED ${TRAJECTORIES})
+ament_target_dependencies(trjectoryLibNumOpt ${dependencies})
+target_link_libraries(trjectoryLibNumOpt ${OSQP_INCLUDE_DIR} osqp::osqp osqp::osqpstatic)
 
-add_executable(trajectory_manager src/trajectory_manager.cpp)
-ament_target_dependencies(trajectory_manager ${dependencies})
-target_link_libraries(trajectory_manager TrjectoryLib osqp::osqp)
+add_executable(trajectory_manager_num_opt src/trajectory_manager.cpp)
+ament_target_dependencies(trajectory_manager_num_opt ${dependencies})
+target_link_libraries(trajectory_manager_num_opt trjectoryLibNumOpt osqp::osqp)
+
+install(TARGETS
+          trjectoryLibNumOpt
+          trajectory_manager_num_opt
+        DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY
+          include/
+        DESTINATION include)
+
+
+
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

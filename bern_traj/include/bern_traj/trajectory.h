@@ -49,7 +49,8 @@ class Trajectory
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryAcceleration() = 0;
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryJerk() = 0;
 
-        virtual bool initialize(rclcpp::Node::SharedPtr node_ptr, const std::vector<Waypoint> *goal_wp, 
+        virtual bool initialize(//rclcpp::Node::SharedPtr node_ptr, 
+                                const std::vector<Waypoint> *goal_wp, 
                                 const nav_msgs::msg::Odometry::ConstSharedPtr msg) = 0;
         virtual bool generateTrajectory(const Eigen::Vector3f &xi, const Eigen::Vector3f &xf,
                                         const Eigen::Vector3f &vi, const Eigen::Vector3f &vf,
