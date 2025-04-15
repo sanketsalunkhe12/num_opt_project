@@ -90,7 +90,11 @@ class BernsteinTrajectory : public Trajectory
         
         // constraint generation
         QPEqConstraints generateEqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp);
-        QPIneqConstraints generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp, const std::vector<Eigen::MatrixXd>& obs_bps, double safe_dist);
+        QPIneqConstraints generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp, const std::vector<Eigen::MatrixXd>& obs_bps, double safe_dist, int samples_per_segment);
+
+        // obstacle generation
+        Eigen::MatrixXd obs2bp(const Eigen::Vector2d& obs, int deg, double t0, double tf);
+        Eigen::VectorXd bernsteinBasisAt(double t, double total_t, int n);
 
         // solving OSQP problem
         bool threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, QPIneqConstraints &ineq_constraints);//, 
