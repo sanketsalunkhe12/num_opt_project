@@ -72,6 +72,7 @@ class BernsteinTrajectory : public Trajectory
             controlPtCount, minDerivative, trajDimension, segIdx,
             timeFactor, magicFabianConstant;
         bool replan;
+        bool isObstacle, isConsensus;
         Eigen::VectorXd bernCoeffComb;
         Eigen::MatrixXd bernCoeff;
         std::vector<double> segmentTime;
@@ -91,6 +92,8 @@ class BernsteinTrajectory : public Trajectory
         // constraint generation
         QPEqConstraints generateEqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp);
         QPIneqConstraints generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp);
+        QPIneqConstraints generateObstacleConstraint();
+        QPIneqConstraints generateConsensusConstraint();
 
         // solving OSQP problem
         bool threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, QPIneqConstraints &ineq_constraints);//, 
@@ -99,6 +102,8 @@ class BernsteinTrajectory : public Trajectory
                             QPIneqConstraints &ineq_constraints_comb);//, rclcpp::Node::SharedPtr node_ptr);
 
         // post optimization
+        std::vector<Eigen::Vector3d> refPosition, refVelocity, refAcceleration, refJerk;
+
         void calculateTrajectory();
 
         Eigen::Vector3d calculatePosition(double &time_, int &segmentIndex);

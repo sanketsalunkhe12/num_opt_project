@@ -3,7 +3,7 @@
 
 #include "eigen3/Eigen/Dense"
 #include "bern_traj/waypoint.h"
-// for std::max
+#include "bern_traj/obstacle.h"
 #include <algorithm>
 
 #include "rclcpp/rclcpp.hpp"

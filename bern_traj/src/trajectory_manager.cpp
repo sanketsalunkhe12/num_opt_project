@@ -28,7 +28,16 @@ void TrajectoryManager::initializeTrajectory()
     };
 
     // Call initialize after the object is fully managed by a shared_ptr
-    currentTrajectory->initialize(&waypoints, nullptr);
+    if(currentTrajectory->initialize(&waypoints, nullptr))
+    {
+        RCLCPP_INFO(this->get_logger(), "Trajectory initialized successfully");
+    }
+    else
+    {
+        RCLCPP_ERROR(this->get_logger(), "Failed to initialize trajectory");
+    }
+
+
 }
 
 TrajectoryManager::~TrajectoryManager()
@@ -49,7 +58,7 @@ int main(int argc, char **argv)
     // Initialize the trajectory after the object is fully constructed
     trajectory_manager->initializeTrajectory();
 
-    rclcpp::spin(trajectory_manager);
+    // rclcpp::spin(trajectory_manager);
     rclcpp::shutdown();
 
     return 0;
