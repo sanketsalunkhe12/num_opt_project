@@ -1,7 +1,7 @@
 #include "bern_traj/bernstein_trajectory.hpp"
-#include "osqp/osqp.h"
 #include <Eigen/Sparse>
-#include <Eigen/Dense>
+#include <sstream>
+#include <fstream>
 
 BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
 {
@@ -27,7 +27,7 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
     samples_per_segment = bernstein_params_.samples_per_segment;
 
     segIdx = 0;
-    replan = false;
+    isSQPreplan = false;
 
     // waypointCount = bernstein_params_.waypoints.size();
 }
@@ -60,7 +60,30 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
 
     segmentCount = waypointCount - 1;
     bernCoeffComb = Eigen::VectorXd::Zero(segmentCount * trajDimension * controlPtCount);
-    
+    primalSol = new OSQPFloat[segmentCount * trajDimension * controlPtCount];
+
+    // inital guess for primal solution
+    for(int i=0; i<waypointCount-1; i++)
+    {
+        // interpolate between waypoints and use as initial guess primal solution
+        Waypoint wp0 = (*goal_wp)[i];
+        Waypoint wp1 = (*goal_wp)[i+1];
+
+        for(int j=0; j<controlPtCount; j++)
+        {
+            float temp_ = static_cast<float>(j) / static_cast<float>(controlPtCount-1);
+            Eigen::Vector3f p_ = wp0.position + (wp1.position - wp0.position) * temp_;
+
+            primalSol[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = p_(0);
+            primalSol[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = p_(1);
+            primalSol[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = p_(2);
+            
+            // std::cout << "primalsol[" << (controlPtCount*segmentCount*0) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*0) + (i*controlPtCount) + j] << std::endl;
+            // std::cout << "primalsol[" << (controlPtCount*segmentCount*1) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*1) + (i*controlPtCount) + j] << std::endl;
+            // std::cout << "primalsol[" << (controlPtCount*segmentCount*2) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*2) + (i*controlPtCount) + j] << std::endl;
+        }
+    }
+
     bool sucess = solveOptimizedTraj(//node_ptr, 
                                 goal_wp);
     if(!sucess)
@@ -75,9 +98,9 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
         for(int dim=0; dim<trajDimension; dim++)
         {
             std::cout << "BernsteinTrajectory: Coefficients for dimension " << dim << ": \n";
-            std::cout << bernCoeff.col(dim) << std::endl;
+            // std::cout << bernCoeff.col(dim) << std::endl;
         }
-        // calculateTrajectory();
+        calculateTrajectory();
     }
 
     return true;
@@ -94,6 +117,8 @@ bool BernsteinTrajectory::generateTrajectory(const Eigen::Vector3f &xi, const Ei
     return true;
 }
 
+
+// TODO: along with odometry also take obstacles updated position and consensus from other agents
 uav_msgs::msg::PositionCmd::SharedPtr BernsteinTrajectory::update(const nav_msgs::msg::Odometry::ConstSharedPtr msg)
 {
     auto position_cmd = std::make_shared<uav_msgs::msg::PositionCmd>();
@@ -226,6 +251,27 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
 
     // if any additional constraints are needed, add them here
 
+    
+    // SQP solver when we have nonlinear constraints which are not convex
+    if(isObstacle)
+    {
+        // generating obstacle constraints which are linearized along at xk
+        QPIneqConstraints obstacle_constraints = generateObstacleConstraint();
+
+        // combine with comb constraints
+    }
+
+    if(isConsensus)
+    {
+        // generating consensus constraints
+        QPIneqConstraints consensus_constraints = generateConsensusConstraint();
+
+        // combine with comb constraints
+    }
+
+
+    
+    
     // solving combined OSQP problem
     bool success = combOSQPSolver(Q_comb, eq_constraints_comb, ineq_constraints_comb);//, node_ptr);
     if(success)
@@ -667,6 +713,21 @@ QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, c
 }
 
 
+QPIneqConstraints BernsteinTrajectory::generateObstacleConstraint()
+{
+    QPIneqConstraints ineq_constraints;
+
+    return ineq_constraints;
+}
+
+
+QPIneqConstraints BernsteinTrajectory::generateConsensusConstraint()
+{
+    QPIneqConstraints ineq_constraints;
+
+    return ineq_constraints;
+}
+
 // solving OSQP problem
 bool BernsteinTrajectory::threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, 
                                             QPIneqConstraints &ineq_constraints)//, rclcpp::Node::SharedPtr node_ptr)
@@ -707,7 +768,6 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     OSQPFloat l[m]; // lower bound of constraints
     OSQPFloat u[m]; // upper bound of constraints
 
-    // std::cout << "BernsteinTrajectory: Combined constraints size: " << m << std::endl;
     for(int i=0; i<eq_constraints_comb.A.rows(); i++) // eq constraints
     {
         l[i] = eq_constraints_comb.b(i);
@@ -799,6 +859,11 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     // Setup workspace
     exitflag = osqp_setup(&solver, primal_sol, q, dual_sol, l, u, m, n, settings);
     
+    if(isSQPreplan)
+        osqp_warm_start(solver, primalSol, dualSol);
+    else
+        osqp_warm_start(solver, primalSol, nullptr);
+    
     auto start = std::chrono::high_resolution_clock::now();
 
     exitflag = osqp_solve(solver);
@@ -813,12 +878,23 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     {
         // RCLCPP_INFO(node_ptr->get_logger(), "Combined OSQP solver solved successfully");
         std::cout << "BernsteinTrajectory: Combined OSQP solver solved successfully" << std::endl;
-        OSQPFloat *x = solver->solution->x;
+
+        primalSol = solver->solution->x; // primal solution
+        dualSol = solver->solution->y; // dual solution
         for(int i=0; i<n; i++)
         {
-            bernCoeffComb(i) = x[i]; 
+            bernCoeffComb(i) = primalSol[i]; 
         }
         osqp_cleanup(solver);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        std::cout << "Elapsed wall time: " << elapsed.count() << " seconds\n";
+
+        // no SQP replanning no obstacle
+        // 0.000594863 seconds without primal and dual warm start
+        // 0.00028736 seconds with primal start
+
         return true;
     }
     else if(solver->info->status_val == OSQP_PRIMAL_INFEASIBLE) 
@@ -845,7 +921,7 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
 
 Eigen::MatrixXd BernsteinTrajectory::getBernCoefficients()
 {
-    return Eigen::MatrixXd();
+    return bernCoeff;
 }
 
 double BernsteinTrajectory::getBernstein(int n, int r, double time)
@@ -855,9 +931,9 @@ double BernsteinTrajectory::getBernstein(int n, int r, double time)
 
 Eigen::VectorXd BernsteinTrajectory::getConvolutionVector()
 {
+    // feels no need this function
     return Eigen::VectorXd();
 }
-
 
 double BernsteinTrajectory::getSegmentTime(int segIdx_)
 {
@@ -872,33 +948,179 @@ void BernsteinTrajectory::calculateTrajectory()
         calculate reference trajectory after opimization for visualization 
     */
 
-    // RCLCPP_INFO(rclcpp::get_logger("bern_traj"), "BernsteinTrajectory: Calculating trajectory");
+    // std::cout << "BernsteinTrajectory: Calculating trajectory" << std::endl;
+
+    for(int i=0; i<segmentCount; i++)
+    {
+        for(double time_=0.0; time_<= 1.0; time_+=0.01)
+        {
+            Eigen::Vector3d pos = calculatePosition(time_, i);
+            Eigen::Vector3d vel = calculateVelocity(time_, i);
+            Eigen::Vector3d acc = calculateAcceleration(time_, i);
+            Eigen::Vector3d jerk = calculateJerk(time_, i);
+
+            refPosition.push_back(pos);
+            refVelocity.push_back(vel);
+            refAcceleration.push_back(acc);
+            refJerk.push_back(jerk);
+        }
+    }
+
+    // publish ref trajectory for visualization
+    // if(vizTrajectory)
+    // {
+    //     // publishRefTrajectory();
+    // }
+
+    // save data to txt file
+    std::ofstream
+    filep("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/position_data.txt");
+    std::ofstream
+    filev("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/velocity_data.txt");
+    std::ofstream
+    filea("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/acceleration_data.txt");
+    std::ofstream
+    filej("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/jerk_data.txt");
+
+    for(int i=0; i<refPosition.size(); i++)
+    {
+        filep << refPosition[i].transpose() << std::endl;
+        filev << refVelocity[i].transpose() << std::endl;
+        filea << refAcceleration[i].transpose() << std::endl;
+        filej << refJerk[i].transpose() << std::endl;
+    }
+
+    filep.close();
+    filev.close();
+    filea.close();
+    filej.close();
 
 }
 
+// TODO: factor values are not as per formula in original code
+// verify this.
+// TOTO: Also combine all pos, vel, acc, jerk in one function
 Eigen::Vector3d BernsteinTrajectory::calculatePosition(double &time_, int &segmentIndex)
 {
-    return Eigen::Vector3d::Zero();
+    /*
+        Compute Bernstein polynomial position 
+        p(t) = sum_{i=0}^{n-1} P_i * B_{n,i}(tau)
+        where P_i is the control point and B_{n,i}(tau) is the Bernstein basis
+    */
+
+    int order = controlPtCount - 0; // B_{i}^{n-m}
+    Eigen::Vector3d traj_position;
+
+    for(int dim=0; dim<trajDimension; dim++)
+    {
+        Eigen::VectorXd x_bern_coeff = bernCoeff.block(segmentIndex*controlPtCount, dim, controlPtCount, 1);
+        Eigen::VectorXd bern_basis = getBezierBasis(time_, order);
+
+        double position = bern_basis.dot(x_bern_coeff);
+        traj_position(dim) = position;
+    }
+    
+    return traj_position;
 }
 
 Eigen::Vector3d BernsteinTrajectory::calculateVelocity(double &time_, int &segmentIndex)
 {
-    return Eigen::Vector3d::Zero();
+    /*
+        Compute Bernstein polynomial velocity 
+        v(t) = n/T * sum_{i=0}^{n-m-1} (P_i+1 - P_i) * B_{n-m,i}(tau)
+    */
+
+    int order = controlPtCount - 1; 
+    Eigen::Vector3d traj_velocity;
+
+    for(int dim=0; dim<trajDimension; dim++)
+    {
+        Eigen::VectorXd x_bern_coeff = bernCoeff.block(segmentIndex*controlPtCount, dim, controlPtCount, 1);
+        Eigen::VectorXd vel_bern_coeff = x_bern_coeff.tail(controlPtCount-1) - x_bern_coeff.head(controlPtCount-1); // (P_i+1 - P_i)
+        
+        Eigen::VectorXd bern_basis = getBezierBasis(time_, order);
+
+        double factor = ((controlPtCount - 1) / segmentTime[segmentIndex])*1.0; // n/T
+
+        double velocity = factor * bern_basis.dot(vel_bern_coeff);
+        traj_velocity(dim) = velocity;
+    }
+    
+    return traj_velocity;
 }
 
 Eigen::Vector3d BernsteinTrajectory::calculateAcceleration(double &time_, int &segmentIndex)
 {
-    return Eigen::Vector3d::Zero();
+    /*
+        Compute Bernstein polynomial acceleration 
+        a(t) = n*(n-1)/T^2 * sum_{i=0}^{n-m-1} (P_i+2 - 2*P_i+1 + P_i) * B_{n-m,i}(tau)
+    */
+    
+    int order = controlPtCount - 2;
+    Eigen::Vector3d traj_acceleration;
+
+    for(int dim=0; dim<trajDimension; dim++)
+    {
+        Eigen::VectorXd x_bern_coeff = bernCoeff.block(segmentIndex*controlPtCount, dim, controlPtCount, 1);
+        Eigen::VectorXd acc_bern_coeff = x_bern_coeff.segment(2, controlPtCount-2) - 2.0*x_bern_coeff.segment(1, controlPtCount-2) + x_bern_coeff.segment(0, controlPtCount-2);
+        // (P_i+2 - 2*P_i+1 + P_i)
+        
+        Eigen::VectorXd bern_basis = getBezierBasis(time_, order);
+
+        double factor = ((controlPtCount-1) * (controlPtCount-2)) / (segmentTime[segmentIndex] * segmentTime[segmentIndex]); // n*(n-1)/T^2
+
+        double acceleration = factor * bern_basis.dot(acc_bern_coeff);
+        traj_acceleration(dim) = acceleration;
+    }
+    
+    return traj_acceleration;
 }
 
 Eigen::Vector3d BernsteinTrajectory::calculateJerk(double &time_, int &segmentIndex)
 {
-    return Eigen::Vector3d::Zero();
+    /*
+        Compute Bernstein polynomial jerk 
+        j(t) = n*(n-1)*(n-2)/T^3 * sum_{i=0}^{n-m-1} (P_i+3 - 3*P_i+2 + 3*P_i+1 - P_i) * B_{n-m,i}(tau)
+    */
+
+    int order = controlPtCount - 3;
+    Eigen::Vector3d traj_jerk;
+
+    for(int dim=0; dim<trajDimension; dim++)
+    {
+        Eigen::VectorXd x_bern_coeff = bernCoeff.block(segmentIndex*controlPtCount, dim, controlPtCount, 1);
+        Eigen::VectorXd jerk_bern_coeff = x_bern_coeff.segment(3, controlPtCount-3) - 3.0*x_bern_coeff.segment(2, controlPtCount-3) 
+                            + 3.0*x_bern_coeff.segment(1, controlPtCount-3) - x_bern_coeff.segment(0, controlPtCount-3);
+        // (P_i+3 - 3*P_i+2 + 3*P_i+1 - P_i)
+        
+        Eigen::VectorXd bern_basis = getBezierBasis(time_, order);
+
+        double factor = ((controlPtCount-1) * (controlPtCount-2) * (controlPtCount-3)) / (segmentTime[segmentIndex] * segmentTime[segmentIndex] * segmentTime[segmentIndex]); 
+        // n*(n-1)*(n-2)/T^3
+
+        double jerk = factor * bern_basis.dot(jerk_bern_coeff);
+        traj_jerk(dim) = jerk;
+    }
+
+    return traj_jerk;
 }
 
 Eigen::VectorXd BernsteinTrajectory::getBezierBasis(double &time_, int &order)
 {
-    return Eigen::VectorXd();
+    /*
+        Generates the Bernstein basis for given order and time
+        B^{n-m}_{i}(tau) = nCr(n-m,i) * (1-tau)^(n-m-i) * tau^i
+        where n-m = order, i = index of control point, tau = time
+    */
+    
+    Eigen::VectorXd bern_basis = Eigen::VectorXd::Zero(order);
+
+    for(int i=0; i<order; i++)
+    {
+        bern_basis(i) = nCr(order-1,i) * pow((1-time_), (order-1-i)) * pow(time_,i);
+    }
+    
+    return bern_basis;
 }
 
 Eigen::MatrixXd BernsteinTrajectory::obs2bp(const Eigen::Vector3d& obs, int deg, double t0, double tf) {

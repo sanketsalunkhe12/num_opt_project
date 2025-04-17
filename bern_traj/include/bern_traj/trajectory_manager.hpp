@@ -2,7 +2,7 @@
 #define TRAJECTORY_MANAGER_HPP
 
 #include "bern_traj/bernstein_trajectory.hpp"
-
+#include "bern_traj/admm.hpp"
 #include "rclcpp/rclcpp.hpp"
 
 class TrajectoryManager : public rclcpp::Node, public std::enable_shared_from_this<TrajectoryManager>

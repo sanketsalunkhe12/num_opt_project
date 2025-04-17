@@ -2,7 +2,7 @@
 #define BERNSTEIN_TRAJECTORY_HPP
 
 #include "trajectory.h"
-
+#include "osqp/osqp.h"
 
 struct QPEqConstraints
 {
@@ -71,8 +71,10 @@ class BernsteinTrajectory : public Trajectory
         int waypointCount, segmentCount, //coeffCount, 
             controlPtCount, minDerivative, trajDimension, segIdx,
             timeFactor, magicFabianConstant;
-        bool replan;
+        bool isSQPreplan;
+        bool isObstacle, isConsensus;
         Eigen::VectorXd bernCoeffComb;
+        OSQPFloat *primalSol, *dualSol;
         Eigen::MatrixXd bernCoeff;
         std::vector<double> segmentTime;
 
@@ -98,6 +100,8 @@ class BernsteinTrajectory : public Trajectory
         // obstacle generation
         Eigen::MatrixXd obs2bp(const Eigen::Vector3d& obs, int deg, double t0, double tf);
         Eigen::VectorXd bernsteinBasisAt(double t, double total_t, int n);
+        QPIneqConstraints generateObstacleConstraint();
+        QPIneqConstraints generateConsensusConstraint();
 
         // solving OSQP problem
         bool threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, QPIneqConstraints &ineq_constraints);//, 
@@ -106,6 +110,8 @@ class BernsteinTrajectory : public Trajectory
                             QPIneqConstraints &ineq_constraints_comb);//, rclcpp::Node::SharedPtr node_ptr);
 
         // post optimization
+        std::vector<Eigen::Vector3d> refPosition, refVelocity, refAcceleration, refJerk;
+
         void calculateTrajectory();
 
         Eigen::Vector3d calculatePosition(double &time_, int &segmentIndex);
