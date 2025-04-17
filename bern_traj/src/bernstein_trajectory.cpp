@@ -1,5 +1,4 @@
 #include "bern_traj/bernstein_trajectory.hpp"
-#include "osqp/osqp.h"
 #include <Eigen/Sparse>
 #include <sstream>
 #include <fstream>
@@ -25,7 +24,7 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
     timeFactor = bernstein_params_.timeFactor;
 
     segIdx = 0;
-    replan = false;
+    isSQPreplan = false;
 
     // waypointCount = bernstein_params_.waypoints.size();
 }
@@ -58,7 +57,30 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
 
     segmentCount = waypointCount - 1;
     bernCoeffComb = Eigen::VectorXd::Zero(segmentCount * trajDimension * controlPtCount);
-    
+    primalSol = new OSQPFloat[segmentCount * trajDimension * controlPtCount];
+
+    // inital guess for primal solution
+    for(int i=0; i<waypointCount-1; i++)
+    {
+        // interpolate between waypoints and use as initial guess primal solution
+        Waypoint wp0 = (*goal_wp)[i];
+        Waypoint wp1 = (*goal_wp)[i+1];
+
+        for(int j=0; j<controlPtCount; j++)
+        {
+            float temp_ = static_cast<float>(j) / static_cast<float>(controlPtCount-1);
+            Eigen::Vector3f p_ = wp0.position + (wp1.position - wp0.position) * temp_;
+
+            primalSol[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = p_(0);
+            primalSol[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = p_(1);
+            primalSol[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = p_(2);
+            
+            // std::cout << "primalsol[" << (controlPtCount*segmentCount*0) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*0) + (i*controlPtCount) + j] << std::endl;
+            // std::cout << "primalsol[" << (controlPtCount*segmentCount*1) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*1) + (i*controlPtCount) + j] << std::endl;
+            // std::cout << "primalsol[" << (controlPtCount*segmentCount*2) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*2) + (i*controlPtCount) + j] << std::endl;
+        }
+    }
+
     bool sucess = solveOptimizedTraj(//node_ptr, 
                                 goal_wp);
     if(!sucess)
@@ -754,6 +776,11 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     // Setup workspace
     exitflag = osqp_setup(&solver, primal_sol, q, dual_sol, l, u, m, n, settings);
     
+    if(isSQPreplan)
+        osqp_warm_start(solver, primalSol, dualSol);
+    else
+        osqp_warm_start(solver, primalSol, nullptr);
+    
     auto start = std::chrono::high_resolution_clock::now();
 
     exitflag = osqp_solve(solver);
@@ -768,12 +795,23 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     {
         // RCLCPP_INFO(node_ptr->get_logger(), "Combined OSQP solver solved successfully");
         std::cout << "BernsteinTrajectory: Combined OSQP solver solved successfully" << std::endl;
-        OSQPFloat *x = solver->solution->x;
+
+        primalSol = solver->solution->x; // primal solution
+        dualSol = solver->solution->y; // dual solution
         for(int i=0; i<n; i++)
         {
-            bernCoeffComb(i) = x[i]; 
+            bernCoeffComb(i) = primalSol[i]; 
         }
         osqp_cleanup(solver);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        std::cout << "Elapsed wall time: " << elapsed.count() << " seconds\n";
+
+        // no SQP replanning no obstacle
+        // 0.000594863 seconds without primal and dual warm start
+        // 0.00028736 seconds with primal start
+
         return true;
     }
     else if(solver->info->status_val == OSQP_PRIMAL_INFEASIBLE) 
@@ -853,13 +891,13 @@ void BernsteinTrajectory::calculateTrajectory()
 
     // save data to txt file
     std::ofstream
-    filep("/home/sanket/Projects/docker_ws/num_opt_ws/data/position_data.txt");
+    filep("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/position_data.txt");
     std::ofstream
-    filev("/home/sanket/Projects/docker_ws/num_opt_ws/data/velocity_data.txt");
+    filev("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/velocity_data.txt");
     std::ofstream
-    filea("/home/sanket/Projects/docker_ws/num_opt_ws/data/acceleration_data.txt");
+    filea("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/acceleration_data.txt");
     std::ofstream
-    filej("/home/sanket/Projects/docker_ws/num_opt_ws/data/jerk_data.txt");
+    filej("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/jerk_data.txt");
 
     for(int i=0; i<refPosition.size(); i++)
     {

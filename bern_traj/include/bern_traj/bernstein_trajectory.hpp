@@ -2,7 +2,7 @@
 #define BERNSTEIN_TRAJECTORY_HPP
 
 #include "trajectory.h"
-
+#include "osqp/osqp.h"
 
 struct QPEqConstraints
 {
@@ -71,9 +71,10 @@ class BernsteinTrajectory : public Trajectory
         int waypointCount, segmentCount, //coeffCount, 
             controlPtCount, minDerivative, trajDimension, segIdx,
             timeFactor, magicFabianConstant;
-        bool replan;
+        bool isSQPreplan;
         bool isObstacle, isConsensus;
         Eigen::VectorXd bernCoeffComb;
+        OSQPFloat *primalSol, *dualSol;
         Eigen::MatrixXd bernCoeff;
         std::vector<double> segmentTime;
         
