@@ -75,6 +75,9 @@ class BernsteinTrajectory : public Trajectory
         Eigen::VectorXd bernCoeffComb;
         Eigen::MatrixXd bernCoeff;
         std::vector<double> segmentTime;
+
+        std::vector<Eigen::Vector3d> obstacles;
+        int samples_per_segment;
         
         // Bernstein functions
         bool solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr, 

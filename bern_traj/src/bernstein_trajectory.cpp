@@ -23,6 +23,9 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
     magicFabianConstant = bernstein_params_.magicFabianConstant;
     timeFactor = bernstein_params_.timeFactor;
 
+    obstacles = bernstein_params_.obstacles;
+    samples_per_segment = bernstein_params_.samples_per_segment;
+
     segIdx = 0;
     replan = false;
 
@@ -155,12 +158,8 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
             num_ineq_constraint += controlPtCount - j;
         }
     }
-    std::vector<Eigen::Vector3d> obstacles = { // TODO: generate randomly / with params
-        {100, 100, 100},
-        {20, 25, 20}
-    };
+
     int num_obs = obstacles.size();
-    int samples_per_segment = 5; // Sampled points per segment for obstacle linearization
 
     // Add obstacle avoidance constraint count
     num_ineq_constraint += segmentCount * samples_per_segment * num_obs;
@@ -622,7 +621,7 @@ QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, c
 
     // (2) additional constraints like constant z etc can be added here as ineq_constraints
 
-    std::cout << "before obstacles" << "\n";
+    // std::cout << "before obstacles" << "\n";
     // Handle obstacle avoidance constraints
     for (int i = 0; i < segmentCount; i++) {
         for (int s = 0; s < samples_per_segment; s++) {
@@ -663,7 +662,7 @@ QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, c
             }
         }
     }
-    std::cout << "after obstacles" << "\n";
+    // std::cout << "after obstacles" << "\n";
     return ineq_constraints;
 }
 

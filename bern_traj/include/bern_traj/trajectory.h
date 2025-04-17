@@ -32,6 +32,13 @@ struct TrajectoryParams
     // berstein related params
     int controlPtCount{12}, minDerivative{3}, trajDimension{3};
     float magicFabianConstant{6.0}, timeFactor{1.0};
+
+    // obstacle related params
+    std::vector<Eigen::Vector3d> obstacles = { 
+        {100, 100, 100},
+        {20, 25, 20}
+    };
+    int samples_per_segment = 5; // Sampled points per segment for obstacle linearization
 };
 
 
