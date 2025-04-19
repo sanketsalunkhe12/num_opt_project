@@ -2,6 +2,7 @@
 #include <Eigen/Sparse>
 #include <sstream>
 #include <fstream>
+#include <filesystem>
 
 BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
 {
@@ -25,6 +26,8 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
 
     obstacles = bernstein_params_.obstacles;
     samples_per_segment = bernstein_params_.samples_per_segment;
+    safe_dist = bernstein_params_.safe_dist;
+    isObstacle = bernstein_params_.isObstacle;
 
     segIdx = 0;
     isSQPreplan = false;
@@ -98,7 +101,7 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
         for(int dim=0; dim<trajDimension; dim++)
         {
             std::cout << "BernsteinTrajectory: Coefficients for dimension " << dim << ": \n";
-            // std::cout << bernCoeff.col(dim) << std::endl;
+            std::cout << bernCoeff.col(dim) << std::endl;
         }
         calculateTrajectory();
     }
@@ -207,9 +210,8 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
             Eigen::MatrixXd polynomial = obs2bp(obs, deg, startTime, endTime);
             obs_bps.push_back(polynomial);
         }
-        double safe_dist = 0.5; // TODO: change to a param
 
-        QPIneqConstraints ineq_constraints = generateIneqConstraint(dim, goal_wp, obs_bps, safe_dist, samples_per_segment);
+        QPIneqConstraints ineq_constraints = generateIneqConstraint(dim, goal_wp, obs_bps);
 
         // std::cout << "BernsteinTrajectory: eq constraints matrix: \n" << eq_constraints.A << std::endl;
         // std::cout << "BernsteinTrajectory: eq constraints vector: \n" << eq_constraints.b << std::endl;
@@ -253,13 +255,65 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
 
     
     // SQP solver when we have nonlinear constraints which are not convex
-    if(isObstacle)
+    if (isObstacle)
     {
-        // generating obstacle constraints which are linearized along at xk
-        QPIneqConstraints obstacle_constraints = generateObstacleConstraint();
+        const int max_sqp_iterations = 10;
+        bool obstacle_solved = false;
+    
+        QPIneqConstraints ineq_constraints_static = ineq_constraints_comb;
+    
+        for (int sqp_iter = 0; sqp_iter < max_sqp_iterations; ++sqp_iter)
+        {
+            std::cout << "first loop" << "\n";
+    
+            // If not satisfied, generate obstacle constraints
+            QPIneqConstraints obstacle_constraints = generateObstacleConstraint();
+    
+            // Combine static constraints + obstacle constraints
+            QPIneqConstraints ineq_constraints_total;
+            ineq_constraints_total.C.resize(ineq_constraints_static.C.rows() + obstacle_constraints.C.rows(), ineq_constraints_static.C.cols());
+            ineq_constraints_total.C << ineq_constraints_static.C,
+                                         obstacle_constraints.C;
+    
+            ineq_constraints_total.d.resize(ineq_constraints_static.d.size() + obstacle_constraints.d.size());
+            ineq_constraints_total.d << ineq_constraints_static.d,
+                                         obstacle_constraints.d;
+    
+            ineq_constraints_total.f.resize(ineq_constraints_static.f.size() + obstacle_constraints.f.size());
+            ineq_constraints_total.f << ineq_constraints_static.f,
+                                         obstacle_constraints.f;
 
-        // combine with comb constraints
-    }
+            updateBernCoeffFromComb();
+            ineq_constraints_comb = ineq_constraints_total;
+    
+            // Solve the updated problem
+            bool feasible = combOSQPSolver(Q_comb, eq_constraints_comb, ineq_constraints_total);
+    
+            if (!feasible)
+            {
+                std::cout << "[SQP] Warning: OSQP solve infeasible at iteration " << sqp_iter << ". Continuing..." << std::endl;
+            }
+            else{
+                std::cout << "[SQP] OSQP solve feasible at iteration " << sqp_iter << std::endl;
+                break;
+            }
+
+            // std::cout << "before check" << "\n";
+            // // Check if obstacle constraints satisfied
+            // if (obstacleConstraintsSatisfied())
+            // {
+            //     std::cout << "[SQP] Obstacle constraints satisfied at iteration " << sqp_iter << "." << std::endl;
+            //     obstacle_solved = true;
+            //     break;
+            // }
+            // std::cout << "after check" << "\n";
+        }
+    
+        if (!obstacle_solved)
+        {
+            std::cout << "[SQP] Failed to satisfy obstacle constraints after " << max_sqp_iterations << " iterations." << std::endl;
+        }
+    } 
 
     if(isConsensus)
     {
@@ -573,7 +627,7 @@ QPEqConstraints BernsteinTrajectory::generateEqConstraint(int &dimension_, const
     return eq_constraints;
 }
 
-QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp, const std::vector<Eigen::MatrixXd>& obs_bps, double safe_dist, int samples_per_segment)
+QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp, const std::vector<Eigen::MatrixXd>& obs_bps)
 {
     /*
         d <= Cx <= f
@@ -667,48 +721,6 @@ QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, c
 
     // (2) additional constraints like constant z etc can be added here as ineq_constraints
 
-    // std::cout << "before obstacles" << "\n";
-    // Handle obstacle avoidance constraints
-    for (int i = 0; i < segmentCount; i++) {
-        for (int s = 0; s < samples_per_segment; s++) {
-            double tau = static_cast<double>(s + 1) / (samples_per_segment + 1); // avoid endpoints
-            double t = tau * segmentTime[i];
-            Eigen::VectorXd bernstein = bernsteinBasisAt(t, segmentTime[i], controlPtCount - 1);
-            
-            // Current segment's trajectory control points (x, y, or z dimension)
-            Eigen::VectorXd C_ref = Eigen::VectorXd::Zero(3); // position of C(tau)
-            for (int d = 0; d < 3; d++) {
-                C_ref[d] = controlPoints[d][i].dot(bernstein);
-            }
-
-            // Linearize the obstacle constraints
-            for (int o = 0; o < num_obs; o++) {
-                Eigen::Vector3d obs_pos;
-                for (int d = 0; d < 3; d++) {
-                    obs_pos[d] = obs_bps[o].row(d).dot(bernstein);
-                }
-
-                Eigen::Vector3d diff = C_ref - obs_pos;
-                double norm_sq = diff.squaredNorm();
-
-                if (norm_sq < 1e-6) continue; // skip near-zero gradient cases
-
-                // Gradient: 2 * (C_ref - O)
-                Eigen::RowVectorXd grad = 2.0 * diff.transpose();
-
-                // Add constraint to matrix
-                Eigen::RowVectorXd row = Eigen::RowVectorXd::Zero(controlPtCount * segmentCount);
-                row.segment(i * controlPtCount, controlPtCount) = grad[dimension_] * bernstein.transpose();
-
-                ineq_constraints.C.row(constraintIndex) = row;
-                double rhs = safe_dist * safe_dist - norm_sq;
-                ineq_constraints.d(constraintIndex) = rhs;
-                ineq_constraints.f(constraintIndex) = 1e6; // unbounded above
-                constraintIndex++;
-            }
-        }
-    }
-    // std::cout << "after obstacles" << "\n";
     return ineq_constraints;
 }
 
@@ -717,7 +729,90 @@ QPIneqConstraints BernsteinTrajectory::generateObstacleConstraint()
 {
     QPIneqConstraints ineq_constraints;
 
-    return ineq_constraints;
+    int deg = controlPtCount - 1;
+    int num_obs = obstacles.size();
+
+    // Total number of obstacle constraints
+    int total_constraints = segmentCount * samples_per_segment * num_obs;
+    int total_variables = bernCoeffComb.rows(); // Full trajectory dimensioned variables
+
+    ineq_constraints.C = Eigen::MatrixXd::Zero(total_constraints, total_variables);
+    ineq_constraints.d = Eigen::VectorXd::Zero(total_constraints);
+    ineq_constraints.f = Eigen::VectorXd::Zero(total_constraints);
+
+    int constraint_idx = 0;
+
+    // Precompute obstacle polynomials
+    std::vector<Eigen::MatrixXd> obs_bps;
+    for (const auto& obs : obstacles) {
+        Eigen::MatrixXd polynomial = obs2bp(obs, deg, startTime, endTime);
+        obs_bps.push_back(polynomial);
+    }
+
+    for (int seg = 0; seg < segmentCount; seg++)
+    {
+        double seg_duration = segmentTime[seg];
+
+        for (int s = 0; s < samples_per_segment; s++)
+        {
+            // Sample time inside segment (avoid endpoints 0 and 1)
+            double tau = static_cast<double>(s + 1) / (samples_per_segment + 1);
+
+            // Bernstein basis at tau
+            Eigen::VectorXd basis = bernsteinBasisAt(tau, 1.0, deg); // normalized time [0,1]
+
+            // Compute current C_ref (current position on the trajectory)
+            Eigen::Vector3d C_ref = Eigen::Vector3d::Zero();
+            for (int dim = 0; dim < trajDimension; dim++) 
+            {
+                int coeff_start = dim * controlPtCount * segmentCount + seg * controlPtCount;
+                double pos = bernCoeffComb.block(coeff_start, 0, controlPtCount, 1).col(0).dot(basis);
+                C_ref(dim) = pos;
+            }
+
+            for (int obs_idx = 0; obs_idx < num_obs; obs_idx++)
+            {
+                // Compute obstacle position at tau
+                Eigen::Vector3d O = Eigen::Vector3d::Zero();
+                for (int dim = 0; dim < trajDimension; dim++)
+                {
+                    O(dim) = obs_bps[obs_idx].row(dim).dot(basis);
+                }
+
+                Eigen::Vector3d diff = C_ref - O;
+                double norm_sq = diff.squaredNorm();
+
+                if (norm_sq < 1e-6) {
+                    // Skip ill-conditioned cases
+                    continue;
+                }
+
+                // Gradient = 2 * (C_ref - O)
+                Eigen::Vector3d grad = 2.0 * diff;
+
+                // Build constraint row for all dimensions
+                Eigen::RowVectorXd constraint_row = Eigen::RowVectorXd::Zero(total_variables);
+
+                for (int dim = 0; dim < trajDimension; dim++)
+                {
+                    int coeff_start = dim * controlPtCount * segmentCount + seg * controlPtCount;
+                    constraint_row.segment(coeff_start, controlPtCount) = grad(dim) * basis.transpose();
+                }
+
+                // Fill constraint
+                ineq_constraints.C.row(constraint_idx) = constraint_row;
+
+                // Linearized constraint: 
+                //  grad^T (delta control points) <= (safe_dist^2 - norm_sq)
+                ineq_constraints.d(constraint_idx) = safe_dist * safe_dist - norm_sq;
+                ineq_constraints.f(constraint_idx) = 1e6; // Upper bound infinity
+
+                constraint_idx++;
+            }
+        }
+    }
+
+    return ineq_constraints;    
 }
 
 
@@ -973,14 +1068,15 @@ void BernsteinTrajectory::calculateTrajectory()
     // }
 
     // save data to txt file
+    std::cout << "Current working directory: " << std::filesystem::current_path() << std::endl;
     std::ofstream
-    filep("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/position_data.txt");
+    filep("./data/position_data.txt");
     std::ofstream
-    filev("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/velocity_data.txt");
+    filev("./data/velocity_data.txt");
     std::ofstream
-    filea("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/acceleration_data.txt");
+    filea("./data/acceleration_data.txt");
     std::ofstream
-    filej("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/jerk_data.txt");
+    filej("./data/jerk_data.txt");
 
     for(int i=0; i<refPosition.size(); i++)
     {
@@ -995,6 +1091,15 @@ void BernsteinTrajectory::calculateTrajectory()
     filea.close();
     filej.close();
 
+    // Save obstacles
+    if (isObstacle){
+        std::ofstream fileobs("./data/obstacles.txt");
+        for (const auto& obs : obstacles)
+        {
+            fileobs << obs.transpose() << std::endl;
+        }
+        fileobs.close();
+    }
 }
 
 // TODO: factor values are not as per formula in original code
@@ -1142,4 +1247,45 @@ Eigen::VectorXd BernsteinTrajectory::bernsteinBasisAt(double t, double total_t, 
     }
 
     return basis;
+}
+
+bool BernsteinTrajectory::obstacleConstraintsSatisfied()
+{
+    const int num_segments = segmentCount;
+    const int num_samples = samples_per_segment;
+    const double eps = 1e-6;
+
+    for (int segment = 0; segment < num_segments; ++segment)
+    {
+        for (int i = 0; i <= num_samples; ++i)
+        {
+            double t = static_cast<double>(i) / num_samples; // normalized time in [0,1]
+            Eigen::Vector3d pos = calculatePosition(t, segment);
+
+            for (const auto& obs : obstacles)
+            {
+                if ((pos - obs).squaredNorm() < safe_dist * safe_dist - eps)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+void BernsteinTrajectory::updateBernCoeffFromComb()
+{
+    bernCoeff.resize(segmentCount * controlPtCount, trajDimension);
+    for (int dim = 0; dim < trajDimension; ++dim)
+    {
+        for (int seg = 0; seg < segmentCount; ++seg)
+        {
+            for (int i = 0; i < controlPtCount; ++i)
+            {
+                int idx = dim * segmentCount * controlPtCount + seg * controlPtCount + i;
+                bernCoeff(seg * controlPtCount + i, dim) = bernCoeffComb(idx);
+            }
+        }
+    }
 }

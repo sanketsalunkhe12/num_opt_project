@@ -35,10 +35,13 @@ struct TrajectoryParams
 
     // obstacle related params
     std::vector<Eigen::Vector3d> obstacles = { 
-        {100, 100, 100},
-        {20, 25, 20}
+        {2, 0, 5},
+        {8, 2, 5},
+        {0, 4, 5}
     };
-    int samples_per_segment = 5; // Sampled points per segment for obstacle linearization
+    int samples_per_segment = 10; // Sampled points per segment for obstacle linearization
+    double safe_dist = 0.01;
+    bool isObstacle = true;
 };
 
 
