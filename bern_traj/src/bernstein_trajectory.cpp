@@ -1,5 +1,7 @@
 #include "bern_traj/bernstein_trajectory.hpp"
-#include "osqp/osqp.h"
+#include "osqp.h"
+#include "osqp_api_utils.h"
+#include "osqp_api_functions.h"
 #include <Eigen/Sparse>
 
 BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
@@ -42,7 +44,7 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
     
     // timeFactor = node_ptr->declare_parameter("time_factor", 1.0);
     // magicFabianConstant = node_ptr->declare_parameter("magic_fabian_constant", 6.0);
-
+    
     // node_ptr->get_parameter("time_factor", timeFactor);
     // node_ptr->get_parameter("magic_fabian_constant", magicFabianConstant);
 
@@ -694,14 +696,14 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     OSQPInt exitflag = 0;
     OSQPInt n = bernCoeffComb.size();
 
-    OSQPSolver *solver;
+    DQPSolver *solver; 
     OSQPSettings *settings;  
     OSQPCscMatrix *primal_sol = (OSQPCscMatrix *)malloc(sizeof(OSQPCscMatrix));
     OSQPCscMatrix *dual_sol = (OSQPCscMatrix *)malloc(sizeof(OSQPCscMatrix));
 
     csc_set_data(primal_sol, n, n, P_nnz, P_x, P_i, P_p);
     csc_set_data(dual_sol, m, n, A_nnz, A_x, A_i, A_p);
-
+    
     // Define solver settings as default
     settings = (OSQPSettings *)malloc(sizeof(OSQPSettings));
     if(settings)
@@ -713,11 +715,11 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     }
 
     // Setup workspace
-    exitflag = osqp_setup(&solver, primal_sol, q, dual_sol, l, u, m, n, settings);
+    exitflag = dqp_setup(&solver, primal_sol, q, dual_sol, l, u, m, n, settings);
     
     auto start = std::chrono::high_resolution_clock::now();
 
-    exitflag = osqp_solve(solver);
+    exitflag = dqp_solve(solver);
 
     if(exitflag != 0)
     {
@@ -734,7 +736,7 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
         {
             bernCoeffComb(i) = x[i]; 
         }
-        osqp_cleanup(solver);
+        dqp_cleanup(solver);
         return true;
     }
     else if(solver->info->status_val == OSQP_PRIMAL_INFEASIBLE) 

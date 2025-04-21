@@ -30,42 +30,52 @@ set(dependencies
 )
 
 ##OSQP INCLUDE DIRECTORIES
-find_path(OSQP_INCLUDE_DIR NAMES
-	osqp/auxil.h
-	osqp/constants.h
-	osqp/cs.h
-	osqp/ctrlc.h
-	osqp/error.h
-	osqp/glob_opts.h
-	osqp/lin_alg.h
-	osqp/lin_sys.h
-	osqp/osqp_configure.h
-	osqp/osqp.h
-	osqp/polish.h
-	osqp/proj.h
-	osqp/scaling.h
-	osqp/types.h
-	osqp/util.h
-	osqp/version.h
-    HINTS /usr/local/include
-)
+# find_path(OSQP_INCLUDE_DIR NAMES
+# 	osqp/auxil.h
+# 	osqp/constants.h
+# 	osqp/cs.h
+# 	osqp/ctrlc.h
+# 	osqp/error.h
+# 	osqp/glob_opts.h
+# 	osqp/lin_alg.h
+# 	osqp/lin_sys.h
+# 	osqp/osqp_configure.h
+# 	osqp/osqp.h
+# 	osqp/polish.h
+# 	osqp/proj.h
+# 	osqp/scaling.h
+# 	osqp/types.h
+# 	osqp/util.h
+# 	osqp/version.h
+#     HINTS /usr/local/include
+# )
 
-set(OSQP_INCLUDE_DIRS ${OSQP_INCLUDE_DIR} )
+# set(OSQP_INCLUDE_DIRS ${OSQP_INCLUDE_DIR} )
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../osqp/include/public)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../osqp/build/codegen_src/inc/public) # if headers are generated here
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../osqp/build/include/public) # if headers are generated here
+
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../osqp/build/out)
 
 list(APPEND TRAJECTORIES
   src/bernstein_trajectory.cpp
   )
 
-add_library(trjectoryLibNumOpt SHARED ${TRAJECTORIES})
-ament_target_dependencies(trjectoryLibNumOpt ${dependencies})
-target_link_libraries(trjectoryLibNumOpt ${OSQP_INCLUDE_DIR} osqp::osqp osqp::osqpstatic)
+add_library(trajectoryLibNumOpt SHARED ${TRAJECTORIES})
+ament_target_dependencies(trajectoryLibNumOpt ${dependencies})
+# target_link_libraries(trjectoryLibNumOpt ${OSQP_INCLUDE_DIR} osqp::osqp osqp::osqpstatic)
+target_link_libraries(trajectoryLibNumOpt osqp)
 
 add_executable(trajectory_manager_num_opt src/trajectory_manager.cpp)
 ament_target_dependencies(trajectory_manager_num_opt ${dependencies})
-target_link_libraries(trajectory_manager_num_opt trjectoryLibNumOpt osqp::osqp)
+# target_link_libraries(trajectory_manager_num_opt trjectoryLibNumOpt osqp::osqp)
+target_link_libraries(trajectory_manager_num_opt trajectoryLibNumOpt osqp::osqp)
+
+target_link_libraries(trajectoryLibNumOpt osqpstatic)
 
 install(TARGETS
-          trjectoryLibNumOpt
+          trajectoryLibNumOpt
           trajectory_manager_num_opt
         DESTINATION lib/${PROJECT_NAME})
 
