@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "osqp_api_types.h": "c",
+        "osqp_api_functions.h": "c"
+    }
+}

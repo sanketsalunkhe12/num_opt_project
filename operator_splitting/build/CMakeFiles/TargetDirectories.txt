@@ -1,0 +1,3 @@
+/home/tddevries/numerical_optimization_project/num_opt_project/operator_splitting/build/CMakeFiles/operator_splitting.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/operator_splitting/build/CMakeFiles/edit_cache.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/operator_splitting/build/CMakeFiles/rebuild_cache.dir

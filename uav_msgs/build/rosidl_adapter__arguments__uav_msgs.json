@@ -1,0 +1,6 @@
+{
+  "package_name": "uav_msgs",
+  "non_idl_tuples": [
+    "/home/tddevries/numerical_optimization_project/num_opt_project/uav_msgs:msg/PositionCmd.msg"
+  ]
+}
