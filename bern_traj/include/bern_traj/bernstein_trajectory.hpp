@@ -32,6 +32,7 @@ class BernsteinTrajectory : public Trajectory
 
         bool initialize(//rclcpp::Node::SharedPtr node_ptr, 
                         const std::vector<Waypoint> *goal_wp, 
+                        const std::vector<Obstacle> *obstacles,
                         const nav_msgs::msg::Odometry::ConstSharedPtr msg);
         bool generateTrajectory(const Eigen::Vector3f &xi, const Eigen::Vector3f &xf,
                                 const Eigen::Vector3f &vi, const Eigen::Vector3f &vf,
@@ -80,7 +81,7 @@ class BernsteinTrajectory : public Trajectory
         
         // Bernstein functions
         bool solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr, 
-            const std::vector<Waypoint> *goal_wp);
+            const std::vector<Waypoint> *goal_wp, const std::vector<Obstacle> *obstacles);
         
         void generateSegmentTime(const std::vector<Waypoint> *goal_wp);
 
@@ -93,7 +94,7 @@ class BernsteinTrajectory : public Trajectory
         // constraint generation
         QPEqConstraints generateEqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp);
         QPIneqConstraints generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp);
-        QPIneqConstraints generateObstacleConstraint();
+        QPIneqConstraints generateObstacleConstraint(int &dimension_,const std::vector<Obstacle> *obstacles);
         QPIneqConstraints generateConsensusConstraint();
 
         // solving OSQP problem

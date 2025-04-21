@@ -27,8 +27,13 @@ void TrajectoryManager::initializeTrajectory()
         {Eigen::Vector3f(10.0, 0.0, 5.0)}
     };
 
+    std::vector<Obstacle> obstacles{
+        {Eigen::Vector3f(2.0, 2.0, 5.0)}
+        // {Eigen::Vector3f(7.0, 2.0, 5.0)}
+    };
+
     // Call initialize after the object is fully managed by a shared_ptr
-    if(currentTrajectory->initialize(&waypoints, nullptr))
+    if(currentTrajectory->initialize(&waypoints, &obstacles, nullptr))
     {
         RCLCPP_INFO(this->get_logger(), "Trajectory initialized successfully");
     }

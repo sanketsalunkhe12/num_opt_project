@@ -36,6 +36,7 @@ BernsteinTrajectory::~BernsteinTrajectory()
 
 bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr, 
                                     const std::vector<Waypoint> *goal_wp, 
+                                    const std::vector<Obstacle> *obstacles,
                                     const nav_msgs::msg::Odometry::ConstSharedPtr msg)
 {
     // RCLCPP_INFO(node_ptr->get_logger(), "BernsteinTrajectory: Initializing trajectory");
@@ -74,6 +75,10 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
             primalSol[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = p_(0);
             primalSol[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = p_(1);
             primalSol[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = p_(2);
+
+            bernCoeffComb[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = p_(0);
+            bernCoeffComb[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = p_(1);
+            bernCoeffComb[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = p_(2);
             
             // std::cout << "primalsol[" << (controlPtCount*segmentCount*0) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*0) + (i*controlPtCount) + j] << std::endl;
             // std::cout << "primalsol[" << (controlPtCount*segmentCount*1) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*1) + (i*controlPtCount) + j] << std::endl;
@@ -82,7 +87,7 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
     }
 
     bool sucess = solveOptimizedTraj(//node_ptr, 
-                                goal_wp);
+                                goal_wp, obstacles);
     if(!sucess)
     {
         // RCLCPP_ERROR(node_ptr->get_logger(), "BernsteinTrajectory: Failed to solve optimized trajectory");
@@ -150,7 +155,7 @@ Eigen::Vector3d BernsteinTrajectory::getRefJerk(double &time_)
 
 // Bernstein functions
 bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr, 
-    const std::vector<Waypoint> *goal_wp)
+    const std::vector<Waypoint> *goal_wp, const std::vector<Obstacle> *obstacles)
 {
     // RCLCPP_INFO(node_ptr->get_logger(), "BernsteinTrajectory: Solving optimized trajectory");
     
@@ -179,7 +184,15 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
         {
             num_ineq_constraint += controlPtCount - j;
         }
+
+        // if(isObstacle)
+        // {
+            // num_ineq_constraint += controlPtCount;
+        // }
     }
+
+    // obstacle constraints
+    
 
     int num_ineq_constraint_comb = num_ineq_constraint * trajDimension; 
 
@@ -193,12 +206,38 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
         QPEqConstraints eq_constraints = generateEqConstraint(dim, goal_wp);
         QPIneqConstraints ineq_constraints = generateIneqConstraint(dim, goal_wp);
 
-        // std::cout << "BernsteinTrajectory: eq constraints matrix: \n" << eq_constraints.A << std::endl;
-        // std::cout << "BernsteinTrajectory: eq constraints vector: \n" << eq_constraints.b << std::endl;
+        // SQP solver when we have nonlinear constraints which are not convex
+        // if(isObstacle)
+        // {
+            
+            // QPIneqConstraints obstacle_constraints = generateObstacleConstraint(dim, obstacles);
 
-        // std::cout << "BernsteinTrajectory: ineq constraints matrix: \n" << ineq_constraints.C << std::endl;
-        // std::cout << "BernsteinTrajectory: ineq constraints vector: \n" << ineq_constraints.d << std::endl;
-        // std::cout << "BernsteinTrajectory: ineq constraints vector: \n" << ineq_constraints.f << std::endl;
+            // std::cout << "BernsteinTrajectory: obstacle constraints matrix+ineq constraints matrix" << std::endl;
+            // QPIneqConstraints obs_ineq_constraints;
+            // obs_ineq_constraints.C = Eigen::MatrixXd::Zero(num_ineq_constraint, bernCoeffComb.size());
+            // obs_ineq_constraints.d = Eigen::VectorXd::Zero(num_ineq_constraint);
+            // obs_ineq_constraints.f = Eigen::VectorXd::Zero(num_ineq_constraint);
+
+            // std::cout << "size of ineq constraints: " << ineq_constraints.C.rows() << ", " << ineq_constraints.d.size() << ", " << ineq_constraints.f.size() << std::endl;
+            // std::cout << "size of obstacle constraints: " << obstacle_constraints.C.rows() << ", " << obstacle_constraints.d.size() << ", " << obstacle_constraints.f.size() << std::endl;
+            // std::cout << "size of obs_ineq constraints: " << obs_ineq_constraints.C.rows() << ", " << obs_ineq_constraints.d.size() << ", " << obs_ineq_constraints.f.size() << std::endl;
+            
+            // obs_ineq_constraints.C.topRows(ineq_constraints.C.rows()) = ineq_constraints.C;
+            // obs_ineq_constraints.C.bottomRows(obstacle_constraints.C.rows()) = obstacle_constraints.C;
+
+            // obs_ineq_constraints.d.head(ineq_constraints.d.size()) = ineq_constraints.d;
+            // obs_ineq_constraints.d.tail(obstacle_constraints.d.size()) = obstacle_constraints.d;
+
+            // obs_ineq_constraints.f.head(ineq_constraints.f.size()) = ineq_constraints.f;
+            // obs_ineq_constraints.f.tail(obstacle_constraints.f.size()) = obstacle_constraints.f;
+
+
+
+            // std::cout << "BernsteinTrajectory: obstacle constraints matrix done" << std::endl;
+
+            // combine with comb constraints
+        // }
+
         
         // combine eq and ineq constraints into one big constraint matrix
         eq_constraints_comb.A.block(dim*controlPtCount*segmentCount, dim*controlPtCount*segmentCount, 
@@ -208,13 +247,13 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
                         controlPtCount*segmentCount, 1) = eq_constraints.b;
 
         ineq_constraints_comb.C.block(dim*num_ineq_constraint, dim*controlPtCount*segmentCount, 
-                        num_ineq_constraint, controlPtCount*segmentCount) = ineq_constraints.C;
+                        num_ineq_constraint, controlPtCount*segmentCount) = /*obs_ineq_constraints.C;*/ ineq_constraints.C;
 
         ineq_constraints_comb.d.block(dim*num_ineq_constraint, 0,
-                        num_ineq_constraint, 1) = ineq_constraints.d;
+                        num_ineq_constraint, 1) = /*obs_ineq_constraints.d;*/ ineq_constraints.d;
 
         ineq_constraints_comb.f.block(dim*num_ineq_constraint, 0,
-                        num_ineq_constraint, 1) = ineq_constraints.f;
+                        num_ineq_constraint, 1) = /*obs_ineq_constraints.C;*/ ineq_constraints.f;
 
         // combined objective function
         Q_comb.block(dim*controlPtCount*segmentCount, dim*controlPtCount*segmentCount, 
@@ -234,22 +273,15 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
     // if any additional constraints are needed, add them here
 
     
-    // SQP solver when we have nonlinear constraints which are not convex
-    if(isObstacle)
-    {
-        // generating obstacle constraints which are linearized along at xk
-        QPIneqConstraints obstacle_constraints = generateObstacleConstraint();
+    
 
-        // combine with comb constraints
-    }
+    // if(isConsensus)
+    // {
+    //     // generating consensus constraints
+    //     QPIneqConstraints consensus_constraints = generateConsensusConstraint();
 
-    if(isConsensus)
-    {
-        // generating consensus constraints
-        QPIneqConstraints consensus_constraints = generateConsensusConstraint();
-
-        // combine with comb constraints
-    }
+    //     // combine with comb constraints
+    // }
 
 
     
@@ -345,7 +377,7 @@ Eigen::MatrixXd BernsteinTrajectory::generateQMatrix(double &time_)
     // std::cout << "BernsteinTrajectory: Generating Q matrix" << std::endl;
     
     Eigen::MatrixXd q = Eigen::MatrixXd::Zero(controlPtCount-minDerivative, controlPtCount-minDerivative); 
-    Eigen::MatrixXd Dm = generateDerivativeMatrix(minDerivative, time_).transpose();
+    Eigen::MatrixXd Dm = generateDerivativeMatrix(minDerivative, time_).transpose(); 
     
     double factor = 1.0/(2*(controlPtCount-minDerivative)); 
     int bigN = 2*(controlPtCount-minDerivative);
@@ -363,7 +395,7 @@ Eigen::MatrixXd BernsteinTrajectory::generateQMatrix(double &time_)
     // Eigen::MatrixXd temp = factor * Dm.transpose() * q * Dm;
     // std::cout << "BernsteinTrajectory: Q matrix: \n" << temp << std::endl;
 
-    return factor * Dm.transpose() * q * Dm; // already Dm is in transpose   
+    return factor * Dm.transpose() * q * Dm;   
 }
 
 // TODO: something needs to check here
@@ -378,6 +410,7 @@ Eigen::MatrixXd BernsteinTrajectory::generateDerivativeMatrix(int &minDerivative
         Dm \in R^{n-m+1 x n+1}
 
         conv_filt stores the convolution result of s*m
+        Note: Output Dm is in transpose form
     */
     // std::cout << "BernsteinTrajectory: Generating derivative matrix" << std::endl;
     
@@ -630,9 +663,67 @@ QPIneqConstraints BernsteinTrajectory::generateIneqConstraint(int &dimension_, c
 }
 
 
-QPIneqConstraints BernsteinTrajectory::generateObstacleConstraint()
+QPIneqConstraints BernsteinTrajectory::generateObstacleConstraint(int &dimension_, const std::vector<Obstacle> *obstacles)
 {
+    
+    /*
+        generating obstacle constraints which are linearized along at xk    
+        [\delta B] = [B_0^n(\tau)  
+                      B_2^n(\tau)
+                      ...
+                      B_n^n(\tau)] \in R^{(1)x(n+1)}
+
+        Here we need to apply the obstacle constraints on the entire trajectory at all time steps 
+
+    */
+
     QPIneqConstraints ineq_constraints;
+    
+    std::cout  << "BernsteinTrajectory: Generating obstacle constraints" << std::endl;
+    double obstacle_dist = 0.5; // distance from obstacle
+
+    ineq_constraints.C = Eigen::MatrixXd::Zero(controlPtCount*segmentCount, controlPtCount*segmentCount);
+    ineq_constraints.d = Eigen::VectorXd::Zero(controlPtCount*segmentCount);
+    ineq_constraints.f = Eigen::VectorXd::Zero(controlPtCount*segmentCount);
+    
+    // Dm derivative matrix Dont need this just identity matrix    
+    // q matrix
+    Eigen::MatrixXd q_ = Eigen::MatrixXd::Zero(controlPtCount, controlPtCount); 
+        
+    int bigN = 2*(controlPtCount);
+    int smallN = controlPtCount;
+
+    for(int i=0; i<controlPtCount; i++)
+    {
+        for(int j=0; j<controlPtCount; j++)
+        {
+            q_(i, j) = 1 / (nCr(bigN, (i + j)) / (nCr(smallN, i) * nCr(smallN, j)));
+        }
+    }
+     
+    for(int i=0; i<segmentCount; i++)
+    {
+        ineq_constraints.C.block(i*controlPtCount, i*controlPtCount, controlPtCount, controlPtCount) = q_;
+    }
+
+    // assign -inifinity to the obstacle lower constraints d
+    for(int i=0; i<controlPtCount*segmentCount; i++)
+    {
+        ineq_constraints.d(i) = -OSQP_INFTY;
+    }
+
+    // convert obstacle into bernstein
+    Eigen::VectorXd obs_bern = Eigen::VectorXd::Ones(controlPtCount*segmentCount) * (*obstacles)[0].position[dimension_];
+    
+    // obstacle upper constraints f [\delta B][Pk] - ( g(Pk) / (2*(Bi(t) - Obs(t)) )
+    Eigen::VectorXd b_pk = ineq_constraints.C * bernCoeffComb.block(dimension_, 0, controlPtCount*segmentCount, 1);
+    Eigen::VectorXd g_pk = (Eigen::VectorXd::Ones(controlPtCount*segmentCount) * obstacle_dist).array() - 
+                            (b_pk - obs_bern).array().square();
+
+    ineq_constraints.f = b_pk - g_pk; 
+    // TODO: not complete and sure about formulation
+
+    std::cout << "Done BernsteinTrajectory: obstacle constraints matrix" << std::endl;
 
     return ineq_constraints;
 }
@@ -798,6 +889,7 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
 
         primalSol = solver->solution->x; // primal solution
         dualSol = solver->solution->y; // dual solution
+
         for(int i=0; i<n; i++)
         {
             bernCoeffComb(i) = primalSol[i]; 
