@@ -30,6 +30,8 @@ class BernsteinTrajectory : public Trajectory
         Eigen::Vector3d getRefAcceleration(double &time_);
         Eigen::Vector3d getRefJerk(double &time_);
 
+        Eigen::MatrixXd getTrajCoefficients();
+
         bool initialize(//rclcpp::Node::SharedPtr node_ptr, 
                         const std::vector<Waypoint> *goal_wp, 
                         const std::vector<Obstacle> *obstacles,
@@ -106,7 +108,7 @@ class BernsteinTrajectory : public Trajectory
         // post optimization
         std::vector<Eigen::Vector3d> refPosition, refVelocity, refAcceleration, refJerk;
 
-        void calculateTrajectory();
+        TrajectoryState calculateTrajectory();
 
         Eigen::Vector3d calculatePosition(double &time_, int &segmentIndex);
         Eigen::Vector3d calculateVelocity(double &time_, int &segmentIndex);
@@ -120,7 +122,6 @@ class BernsteinTrajectory : public Trajectory
         
         Eigen::VectorXd getConvolutionVector();
         double getSegmentTime(int segIdx_);
-        Eigen::MatrixXd getBernCoefficients();
 
 };
 

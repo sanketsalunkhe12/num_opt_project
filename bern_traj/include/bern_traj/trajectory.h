@@ -34,16 +34,28 @@ struct TrajectoryParams
     float magicFabianConstant{6.0}, timeFactor{1.0};
 };
 
+struct TrajectoryState
+{
+    std::vector<Eigen::Vector3d> position;
+    std::vector<Eigen::Vector3d> velocity;
+    std::vector<Eigen::Vector3d> acceleration;
+    std::vector<Eigen::Vector3d> jerk;
+};
+
 
 class Trajectory
 {
     public:
-            // change double to float
+        // change double to float
         virtual Eigen::Vector3d getRefPosition(double &time_) = 0;
         virtual Eigen::Vector3d getRefVelocity(double &time_) = 0;
         virtual Eigen::Vector3d getRefAcceleration(double &time_) = 0;
         virtual Eigen::Vector3d getRefJerk(double &time_) = 0;
 
+        virtual Eigen::MatrixXd getTrajCoefficients() = 0;
+
+        virtual TrajectoryState calculateTrajectory() = 0; 
+        
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryPosition() = 0;
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryVelocity() = 0;
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryAcceleration() = 0;

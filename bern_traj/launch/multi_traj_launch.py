@@ -12,8 +12,8 @@ def generate_launch_description():
 
     multi_node_param = os.path.join(
         get_package_share_directory('bern_traj'),
-        'param',
-        'multi_traj_param.yaml'
+        'config',
+        'multi_traj_params.yaml'
     )
 
     multi_node_exec_path = os.path.join(
@@ -31,27 +31,29 @@ def generate_launch_description():
     # launch_description.add_action(multi_node)
 
     for i in range(num_agents):
-        agent_name = f"traj_manager_agent_{i}"
-
-        # launch_description.add_action(
-        #     Node(
-        #         package='bern_traj',
-        #         executable='trajectory_manager_num_opt',
-        #         name=agent_name,
-        #         output='screen',
-        #         # parameters=[multi_node_param],
-        #     )
-        # )
+        agent_name = f"traj_manager_agent_{i+1}"
+        robot_name = f"robot_{i + 1}"
 
         launch_description.add_action(
-            ExecuteProcess(
-                cmd=[
-                    'tmux', 'new-session', '-d', '-s', f'agent_{i}',
-                    'ros2', 'run', 'bern_traj', 'trajectory_manager_num_opt',
-                    '--ros-args', '--param', f'agent_id:={i}'
-                ],
-                shell=True
-                )
-                )
+            Node(
+                package='bern_traj',
+                executable='trajectory_manager_num_opt',
+                name=agent_name,
+                output='screen',
+                parameters=[multi_node_param,
+                    {'robot_name': robot_name}]
+            )
+        )
+
+        # launch_description.add_action(
+        #     ExecuteProcess(
+        #         cmd=[
+        #             'tmux', 'new-session', '-d', '-s', f'agent_{i}',
+        #             'ros2', 'run', 'bern_traj', 'trajectory_manager_num_opt',
+        #             '--ros-args', '--param', f'agent_id:={i}'
+        #         ],
+        #         shell=True
+        #         )
+        #         )
     
     return launch_description

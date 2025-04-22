@@ -97,12 +97,13 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
     {
         
         // print all coeffiecients by dimension
-        for(int dim=0; dim<trajDimension; dim++)
-        {
-            std::cout << "BernsteinTrajectory: Coefficients for dimension " << dim << ": \n";
-            // std::cout << bernCoeff.col(dim) << std::endl;
-        }
-        calculateTrajectory();
+        // for(int dim=0; dim<trajDimension; dim++)
+        // {
+        //     std::cout << "BernsteinTrajectory: Coefficients for dimension " << dim << ": \n";
+        //     // std::cout << bernCoeff.col(dim) << std::endl;
+        // }
+        // calculateTrajectory();
+        return true;
     }
 
     return true;
@@ -928,11 +929,6 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
 
 
 
-Eigen::MatrixXd BernsteinTrajectory::getBernCoefficients()
-{
-    return bernCoeff;
-}
-
 double BernsteinTrajectory::getBernstein(int n, int r, double time)
 {
     return 0.0;
@@ -951,14 +947,13 @@ double BernsteinTrajectory::getSegmentTime(int segIdx_)
 
 // post optimization
 
-void BernsteinTrajectory::calculateTrajectory()
+TrajectoryState BernsteinTrajectory::calculateTrajectory()
 {
-    /*
-        calculate reference trajectory after opimization for visualization 
-    */
-
+    // calculate reference trajectory after opimization for visualization 
     // std::cout << "BernsteinTrajectory: Calculating trajectory" << std::endl;
 
+    TrajectoryState trajState;
+    
     for(int i=0; i<segmentCount; i++)
     {
         for(double time_=0.0; time_<= 1.0; time_+=0.01)
@@ -968,42 +963,14 @@ void BernsteinTrajectory::calculateTrajectory()
             Eigen::Vector3d acc = calculateAcceleration(time_, i);
             Eigen::Vector3d jerk = calculateJerk(time_, i);
 
-            refPosition.push_back(pos);
-            refVelocity.push_back(vel);
-            refAcceleration.push_back(acc);
-            refJerk.push_back(jerk);
+            trajState.position.push_back(pos);
+            trajState.velocity.push_back(vel);
+            trajState.acceleration.push_back(acc);
+            trajState.jerk.push_back(jerk);
         }
     }
 
-    // publish ref trajectory for visualization
-    // if(vizTrajectory)
-    // {
-    //     // publishRefTrajectory();
-    // }
-
-    // save data to txt file
-    std::ofstream
-    filep("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/position_data.txt");
-    std::ofstream
-    filev("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/velocity_data.txt");
-    std::ofstream
-    filea("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/acceleration_data.txt");
-    std::ofstream
-    filej("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/jerk_data.txt");
-
-    for(int i=0; i<refPosition.size(); i++)
-    {
-        filep << refPosition[i].transpose() << std::endl;
-        filev << refVelocity[i].transpose() << std::endl;
-        filea << refAcceleration[i].transpose() << std::endl;
-        filej << refJerk[i].transpose() << std::endl;
-    }
-
-    filep.close();
-    filev.close();
-    filea.close();
-    filej.close();
-
+    return trajState;
 }
 
 // TODO: factor values are not as per formula in original code
@@ -1132,5 +1099,9 @@ Eigen::VectorXd BernsteinTrajectory::getBezierBasis(double &time_, int &order)
     return bern_basis;
 }
 
+Eigen::MatrixXd BernsteinTrajectory::getTrajCoefficients()
+{
+    return bernCoeff;
+}
 
 
