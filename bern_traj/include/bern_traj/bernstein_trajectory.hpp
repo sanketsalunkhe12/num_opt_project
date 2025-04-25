@@ -76,10 +76,13 @@ class BernsteinTrajectory : public Trajectory
             timeFactor, magicFabianConstant;
         bool isSQPreplan;
         bool isObstacle, isConsensus;
+        double obstacleDist, consensusDist;
         Eigen::VectorXd bernCoeffComb;
         OSQPFloat *primalSol, *dualSol;
         Eigen::MatrixXd bernCoeff;
         std::vector<double> segmentTime;
+
+        int sampe_size = 20;
         
         // Bernstein functions
         bool solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr, 

@@ -32,6 +32,7 @@ struct TrajectoryParams
     // berstein related params
     int controlPtCount{12}, minDerivative{3}, trajDimension{3};
     float magicFabianConstant{6.0}, timeFactor{1.0};
+    double obstacleDistance{0.0}, consensusDistance{0.0};
 };
 
 struct TrajectoryState

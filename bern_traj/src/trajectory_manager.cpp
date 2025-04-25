@@ -18,15 +18,18 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
     bernsteinParams.minDerivative = 3;
     bernsteinParams.trajDimension = 3;
 
-    currentTrajectory = std::make_shared<BernsteinTrajectory>(bernsteinParams);
+    // currentTrajectory = std::make_shared<BernsteinTrajectory>(bernsteinParams);
 
     // parameters
     this->declare_parameter<std::string>("robot_name", "robot_0");
     this->get_parameter("robot_name", robotName);
 
+    this->declare_parameter<double>("obstacle_distance", 0.0);
+    this->get_parameter("obstacle_distance", bernsteinParams.obstacleDistance);
+
     RCLCPP_INFO(this->get_logger(), "Robot name: %s", robotName.c_str());
 
-
+    // load waypoints 
     std::vector<double> wp_raw;
     this->declare_parameter("waypoints", std::vector<double>{});
     this->get_parameter("waypoints", wp_raw);
@@ -36,9 +39,21 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
         waypoints.push_back({Eigen::Vector3f(wp_raw[i], wp_raw[i + 1], wp_raw[i + 2])});
     }
 
+    // load obstacles
+    std::vector<double> obs_raw;
+    this->declare_parameter("obstacles", std::vector<double>{});
+    this->get_parameter("obstacles", obs_raw);
+
+    for(size_t i = 0; i < obs_raw.size(); i += 3) 
+    {
+        obstacles.push_back({Eigen::Vector3f(obs_raw[i], obs_raw[i + 1], obs_raw[i + 2])});
+    }
+
     // publisher
     consensusTrajPub = this->create_publisher<uav_msgs::msg::ConsensusTraj>("consensus_traj", 10);
     positionCmdPub = this->create_publisher<uav_msgs::msg::PositionCmd>("position_cmd", 10);
+
+    currentTrajectory = std::make_shared<BernsteinTrajectory>(bernsteinParams);
 }
 
 void TrajectoryManager::initializeTrajectory()
@@ -49,10 +64,15 @@ void TrajectoryManager::initializeTrajectory()
     //     RCLCPP_INFO(this->get_logger(), "Waypoint %d: %f, %f, %f", i, waypoints[i].position.x(), waypoints[i].position.y(), waypoints[i].position.z());
     // }
 
-    std::vector<Obstacle> obstacles{
-        {Eigen::Vector3f(2.0, 2.0, 5.0)}
-        // {Eigen::Vector3f(7.0, 2.0, 5.0)}
-    };
+    // std::vector<Obstacle> obstacles{
+    //     {Eigen::Vector3f(2.0, 2.0, 5.0)}
+    //     // {Eigen::Vector3f(7.0, 2.0, 5.0)}
+    // };
+
+    for(int i=0; i < obstacles.size(); ++i)
+    {
+        RCLCPP_INFO(this->get_logger(), "Obstacle %d: %f, %f, %f", i, obstacles[i].position.x(), obstacles[i].position.y(), obstacles[i].position.z());
+    }
 
     // Call initialize after the object is fully managed by a shared_ptr
     if(currentTrajectory->initialize(&waypoints, &obstacles, nullptr))

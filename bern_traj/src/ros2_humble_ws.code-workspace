@@ -80,7 +80,8 @@
 			"typeinfo": "cpp",
 			"regex": "cpp",
 			"future": "cpp",
-			"variant": "cpp"
+			"variant": "cpp",
+			"core": "cpp"
 		}
 	}
 }

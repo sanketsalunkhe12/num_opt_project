@@ -8,7 +8,7 @@ def generate_launch_description():
     
     launch_description = LaunchDescription()
     
-    num_agents = 3
+    num_agents = 1
 
     multi_node_param = os.path.join(
         get_package_share_directory('bern_traj'),
