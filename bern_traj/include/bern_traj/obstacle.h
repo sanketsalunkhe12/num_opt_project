@@ -13,7 +13,7 @@
 
 struct Obstacle
 {
-    Eigen::Vector3f position{0.0, 0.0, 0.0};
+    Eigen::Vector3d position{0.0, 0.0, 0.0};
     float length{0.0}, width{0.0}, height{0.0};
     
 };

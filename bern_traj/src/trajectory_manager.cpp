@@ -44,9 +44,10 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
     this->declare_parameter("obstacles", std::vector<double>{});
     this->get_parameter("obstacles", obs_raw);
 
+    
     for(size_t i = 0; i < obs_raw.size(); i += 3) 
     {
-        obstacles.push_back({Eigen::Vector3f(obs_raw[i], obs_raw[i + 1], obs_raw[i + 2])});
+        obstacles.push_back({Eigen::Vector3d(obs_raw[i], obs_raw[i + 1], obs_raw[i + 2])});
     }
 
     // publisher

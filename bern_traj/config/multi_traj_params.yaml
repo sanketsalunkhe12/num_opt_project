@@ -2,10 +2,10 @@ traj_manager_agent_1:
   ros__parameters:
     robot_name: "robot_1"
     waypoints: [0.0, 0.0, 5.0,  # x y z
-                5.0, 5.0, 7.0, 
-                10.0, 00.0, 3.0]
-    obstacles: [10.0, 10.0, 10.0]
-    obstacle_distance: 0.00001
+                5.0, 5.0, 7.0] #, 
+                # 10.0, 00.0, 3.0]
+    obstacles: [20.0, 20.0, 20.0]
+    obstacle_distance: 0.01
 
 traj_manager_agent_2:
   ros__parameters:
