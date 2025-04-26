@@ -14,6 +14,10 @@ find_package(nav_msgs REQUIRED)
 find_package(uav_msgs REQUIRED)
 find_package(TBB REQUIRED)
 
+if(TBB_FOUND)
+  message("Found TBB!")
+endif()
+
 find_package(osqp REQUIRED)
 
 include_directories(
@@ -28,7 +32,7 @@ set(dependencies
   nav_msgs
   uav_msgs
   osqp
-  tbb
+  TBB
 )
 
 ##OSQP INCLUDE DIRECTORIES
