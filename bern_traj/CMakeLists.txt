@@ -12,6 +12,7 @@ find_package(rclpy REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(uav_msgs REQUIRED)
+find_package(TBB REQUIRED)
 
 find_package(osqp REQUIRED)
 
@@ -27,6 +28,7 @@ set(dependencies
   nav_msgs
   uav_msgs
   osqp
+  tbb
 )
 
 ##OSQP INCLUDE DIRECTORIES
@@ -63,6 +65,10 @@ target_link_libraries(trjectoryLibNumOpt ${OSQP_INCLUDE_DIR} osqp::osqp osqp::os
 add_executable(trajectory_manager_num_opt src/trajectory_manager.cpp)
 ament_target_dependencies(trajectory_manager_num_opt ${dependencies})
 target_link_libraries(trajectory_manager_num_opt trjectoryLibNumOpt osqp::osqp)
+
+add_executable(dqp src/optimizer.cpp)
+ament_target_dependencies(dqp ${dependencies})
+target_link_libraries(dqp Eigen3::Eigen TBB::tbb)
 
 install(TARGETS
           trjectoryLibNumOpt
