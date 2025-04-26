@@ -77,13 +77,13 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
             float temp_ = static_cast<float>(j) / static_cast<float>(controlPtCount-1);
             Eigen::Vector3f p_ = wp0.position + (wp1.position - wp0.position) * temp_;
 
-            primalSol[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = p_(0);
-            primalSol[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = p_(1);
-            primalSol[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = p_(2);
+            primalSol[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = 0.0; //p_(0);
+            primalSol[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = 0.0; //p_(1);
+            primalSol[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = 0.0; //p_(2);
 
-            bernCoeffComb[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = p_(0);
-            bernCoeffComb[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = p_(1);
-            bernCoeffComb[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = p_(2);
+            bernCoeffComb[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = 0.0; //p_(0);
+            bernCoeffComb[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = 0.0; //p_(1);
+            bernCoeffComb[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = 0.0; //p_(2);
             
             // std::cout << "primalsol[" << (controlPtCount*segmentCount*0) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*0) + (i*controlPtCount) + j] << std::endl;
             // std::cout << "primalsol[" << (controlPtCount*segmentCount*1) + (i*controlPtCount) + j << "]: " << primalSol[(controlPtCount*waypointCount*1) + (i*controlPtCount) + j] << std::endl;
@@ -311,9 +311,9 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
     // std::cout << "BernsteinTrajectory: eq constraints matrix: \n" << eq_constraints_comb.A << std::endl;
     // std::cout << "BernsteinTrajectory: eq constraints vector: \n" << eq_constraints_comb.b << std::endl;
 
-    std::cout << "BernsteinTrajectory: ineq constraints matrix: \n" << ineq_constraints_comb.C << std::endl;
-    std::cout << "BernsteinTrajectory: ineq constraints vector: \n" << ineq_constraints_comb.d << std::endl;
-    std::cout << "BernsteinTrajectory: ineq constraints vector: \n" << ineq_constraints_comb.f << std::endl;
+    // std::cout << "BernsteinTrajectory: ineq constraints matrix: \n" << ineq_constraints_comb.C << std::endl;
+    // std::cout << "BernsteinTrajectory: ineq constraints vector: \n" << ineq_constraints_comb.d << std::endl;
+    // std::cout << "BernsteinTrajectory: ineq constraints vector: \n" << ineq_constraints_comb.f << std::endl;
 
     // if any additional constraints are needed, add them here
     
@@ -838,35 +838,30 @@ QPIneqConstraints BernsteinTrajectory::generateCombObstacleConstraint(const std:
 
         for(int seg_=0; seg_<segmentCount; seg_++)
         {
-            comb_obst_constraints.C.block(sample + (seg_*sampe_size), seg_*controlPtCount, 1, controlPtCount) = 
-                                            bernBasis.transpose(); // for x
-            comb_obst_constraints.C.block(sample + (seg_*sampe_size), seg_*controlPtCount + controlPtCount*segmentCount, 1, controlPtCount) = 
-                                            bernBasis.transpose(); // for y
-            comb_obst_constraints.C.block(sample + (seg_*sampe_size), seg_*controlPtCount + 2*controlPtCount*segmentCount, 1, controlPtCount) =
-                                            bernBasis.transpose(); // for z
-
             Eigen::Vector3d position_vec = calculatePosition(time_, seg_);
             Eigen::Vector3d obstacle_vec = (*obstacles)[0].position;
             double obst_position = (position_vec - obstacle_vec).norm(); 
+            Eigen::Vector3d dir_vec = (position_vec - obstacle_vec).normalized();
             
             double denom = 2.0 * (obst_position);
             if (std::abs(denom) < 1e-6)
                 denom = (denom >= 0.0 ? 1e-6 : -1e-6);
 
-            double constant = ((obstacleDist*obstacleDist) - (obst_position*obst_position)) / 
-                                (denom);
-            
-            
+            double constant = ((obstacleDist*obstacleDist) - (obst_position*obst_position)) / (denom);
+
             Eigen::VectorXd bernBasisComb = Eigen::VectorXd::Zero(controlPtCount*segmentCount*trajDimension);
             for(int dim=0; dim<trajDimension; dim++)
             {
                 bernBasisComb.block(dim*controlPtCount*segmentCount, 0, controlPtCount*segmentCount, 1) = 
-                    bernBasis;
+                    bernBasis * dir_vec(dim);
             }
 
             double b_Pk = bernBasisComb.dot(bernCoeffComb);
             
-            comb_obst_constraints.f(sample + (seg_*sampe_size)) = constant; // + b_Pk + ;
+            comb_obst_constraints.C.block(sample + (seg_*sampe_size), 0, 1, controlPtCount*segmentCount*trajDimension) = 
+                                    bernBasisComb.transpose();
+            
+            comb_obst_constraints.f(sample + (seg_*sampe_size)) = constant + b_Pk ;
                         
             comb_obst_constraints.d(sample + (seg_*sampe_size)) = -OSQP_INFTY;
         }
