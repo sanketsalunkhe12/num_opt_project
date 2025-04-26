@@ -72,7 +72,7 @@ target_link_libraries(trajectory_manager_num_opt trjectoryLibNumOpt osqp::osqp)
 
 add_executable(dqp src/optimizer.cpp)
 ament_target_dependencies(dqp ${dependencies})
-target_link_libraries(dqp Eigen3::Eigen TBB::tbb)
+target_link_libraries(dqp trjectoryLibNumOpt Eigen3::Eigen TBB::tbb)
 
 install(TARGETS
           trjectoryLibNumOpt

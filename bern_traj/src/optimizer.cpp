@@ -1,4 +1,5 @@
 #include "bern_traj/optimizer.hpp"
+#include <iostream>
 // ^Should include all relevant types I think?
 
 // RH: ASSUMING ROW MAJOR MATRICES BUT SHOULD ALTER TO MATCH BERNSTEIN FILE!!!
@@ -40,6 +41,8 @@ GlobalIndexMap map_global_to_local_indices(
 // could potentially just have these be double typed...
 //  template <typename DerivedA,typename DerivedB,typename Derivedc>
 // void DQPSolver::init(Eigen::MatrixBase<DerivedA> &A, Eigen::MatrixBase<DerivedB> &B, Eigen::MatrixBase<Derivedc> &c, const float alpha, const float rho, const float mu) : A(A), B(B), c(c), alpha(alpha), rho(rho), mu(mu) {
+
+DQPSolver::DQPSolver() {}
 
 // Going with a non-templated version where we use Ref and double type matrices
 void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const Eigen::VectorXd &_lower, const Eigen::VectorXd &_upper, const float _alpha, const float _rho, const float _mu) {
@@ -91,8 +94,12 @@ void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const
 }
 
 void DQPSolver::compute_KKT_rhs() {
-    rhs(Eigen::seq(0,n)) = mu * w_tilde - y; // you tried calling a vector method on a matrix error here.... unsure why
-    rhs(Eigen::seq(n,m)) = z - rhoinv * lamb;
+    auto expr1 = mu * w_tilde - y;
+    auto expr2 = z - rhoinv * lamb;
+ 
+    // rhs is a column vector
+    rhs(1, Eigen::seq(0,n)) = expr1.eval(); // you tried calling a vector method on a matrix error here.... unsure why
+    rhs(1, Eigen::seq(n,m)) = expr2.eval();
 }
 
 void DQPSolver::solve_KKT() {
@@ -115,7 +122,7 @@ void DQPSolver::update_primals() {
     // Set the value, then clip using lower and upper bounds
     s_prev = s; // save old s
     s = alpha * z + (1 - alpha) * s + rhoinv * lamb;
-    s = s.array().cwiseMin(upper).cwiseMax(lower); // going to need to figure this one out
+    s = s.cwiseMin(upper).cwiseMax(lower);
 }
 
 void DQPSolver::update_global(const Eigen::VectorXd &w_new) {
@@ -257,3 +264,8 @@ Eigen::VectorXd DistributedOptimizer::getDualResiduals() {
     return tmp;
 }
 
+int main(int argc, char* argv[]) {
+    std::cout << "Well, we made it this far...." << std::endl;
+
+    // Simple test with basic quadratic objective function (just make a gaussian PSD for Q) and constraints which are just an Identity matrix with some noise added?
+}
