@@ -62,26 +62,29 @@ void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const
     n = A.cols();
 
     // optimization variables (primals, duals)
-    x = Eigen::VectorXd::Zero(n);
-    nu = Eigen::VectorXd::Zero(m);
-    z = Eigen::VectorXd::Zero(m);
-    s = Eigen::VectorXd::Zero(m);
-    w_tilde = Eigen::VectorXd::Zero(n); // basically the local copy of relevant global parameters G(w, i, j) -> {w_l}
-    lamb = Eigen::VectorXd::Zero(m);
-    y = Eigen::VectorXd::Zero(n);
+    x = Eigen::VectorXd::Random(n);
+    nu = Eigen::VectorXd::Random(m);
+    z = Eigen::VectorXd::Random(m);
+    s = Eigen::VectorXd::Random(m);
+    w_tilde = Eigen::VectorXd::Random(n); // basically the local copy of relevant global parameters G(w, i, j) -> {w_l}
+    lamb = Eigen::VectorXd::Random(m);
+    y = Eigen::VectorXd::Random(n);
 
     // For most of these vars, need a way to store the previous value for updates
-    x_prev = Eigen::VectorXd::Zero(n);
-    nu_prev = Eigen::VectorXd::Zero(m);
-    z_prev = Eigen::VectorXd::Zero(m);
-    s_prev = Eigen::VectorXd::Zero(m);
-    w_tilde_prev = Eigen::VectorXd::Zero(n);
-    lamb_prev = Eigen::VectorXd::Zero(m);
-    y_prev = Eigen::VectorXd::Zero(n);
+    x_prev = Eigen::VectorXd::Random(n);
+    nu_prev = Eigen::VectorXd::Random(m);
+    z_prev = Eigen::VectorXd::Random(m);
+    s_prev = Eigen::VectorXd::Random(m);
+    w_tilde_prev = Eigen::VectorXd::Random(n);
+    lamb_prev = Eigen::VectorXd::Random(m);
+    y_prev = Eigen::VectorXd::Random(n);
 
     // Precompute the lhs for linear solver
+    // std::cout << Q.rows() << " " << Q.cols() << std::endl;
+    // std::cout << "n=" << n << " m=" << m << std::endl;
+
     lhs = Eigen::MatrixXd::Identity(n+m, n+m);
-    lhs.topLeftCorner(n,n) = Q + mu * Eigen::MatrixXd::Identity(n,n);
+    lhs.topLeftCorner(n,n) = (Q + mu * Eigen::MatrixXd::Identity(n,n)).eval(); // currently where things are failing with assert issues on row/col and cwise ops
     lhs.topRightCorner(n,m) = A.transpose();
     lhs.bottomLeftCorner(m,n) = A;
     lhs.bottomRightCorner(m,m) *= rhoinv;
@@ -96,10 +99,12 @@ void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const
 void DQPSolver::compute_KKT_rhs() {
     auto expr1 = mu * w_tilde - y;
     auto expr2 = z - rhoinv * lamb;
- 
+
     // rhs is a column vector
-    rhs(1, Eigen::seq(0,n)) = expr1.eval(); // you tried calling a vector method on a matrix error here.... unsure why
-    rhs(1, Eigen::seq(n,m)) = expr2.eval();
+    rhs(Eigen::seqN(0,n)) = expr1.eval();
+    rhs(Eigen::seqN(n,m)) = expr2.eval();
+
+    // std::cout << rhs.size() << std::endl << rhs << std::endl; // Correct length n+m!
 }
 
 void DQPSolver::solve_KKT() {
@@ -110,14 +115,25 @@ void DQPSolver::solve_KKT() {
     Eigen::VectorXd sln = ldlt_solver.solve(rhs);
 
     // x and nu update
-    x = sln(Eigen::seq(0,n));
-    nu = sln(Eigen::seq(n,m));
+    x = sln(Eigen::seqN(0,n)); // x should be length n
+    nu = sln(Eigen::seqN(n,m)); // Nu should be length m
+
+    // Check sizes
+    // std::cout << x.size() << std::endl;
+    // std::cout << nu.size() << std::endl;    
 }
 
 // Compute new rhs, solve KKT, set x and nu, update z, update s
 void DQPSolver::update_primals() {
     solve_KKT(); //
-    z = s + rhoinv * (nu - lamb); // Need to initialize prev values to zero I think?
+
+    // std::cout << "Acols=n=" << n << " Arows=m=" << m << std::endl;
+    // std::cout << z.size() << std::endl;
+    // std::cout << s.size() << std::endl;
+    // std::cout << nu.size() << std::endl;
+    // std::cout << lamb.size() << std::endl;
+
+    z = s + rhoinv * (nu - lamb); // Failing here, but all vectors in expression should be len m...
     
     // Set the value, then clip using lower and upper bounds
     s_prev = s; // save old s
@@ -131,6 +147,8 @@ void DQPSolver::update_global(const Eigen::VectorXd &w_new) {
 }
 
 void DQPSolver::update_duals() {
+    // lamb = (lamb + rho * (alpha * z + (1 - alpha)*s_prev - s)).eval();
+    // y = (y + mu * (alpha * x + (1 - alpha)*w_tilde_prev - w_tilde)).eval();
     lamb = lamb + rho * (alpha * z + (1 - alpha)*s_prev - s);
     y = y + mu * (alpha * x + (1 - alpha)*w_tilde_prev - w_tilde);
 }
@@ -171,8 +189,10 @@ void DistributedOptimizer::setup_solvers(int chunk_size, int chunk_stride) {
         m_solvers[i] = DQPSolver();
 
         //Initialize with the specific block along diagonal relevant to this solver (lower and upper are already fixed as chunk_size for simplicity)
-        // RH: TODO - FIX THE A BLOCK SETUP, SINCE IT SHOULD BE N rows by M cols!!!
-        m_solvers[i].init(Q.block(i*chunk_stride, i*chunk_stride, chunk_size, chunk_size), A.block(i*chunk_stride, i*chunk_stride, chunk_size, chunk_size), lower, upper, alpha, rho, mu);
+        // REMEMBER: THESE ARE COLUMN MAJOR!!!!!!
+        auto qi = Q.block(i*chunk_stride, i*chunk_stride, chunk_size, chunk_size);
+        auto ai = A.block(0, i*chunk_stride, A.rows(), chunk_size); // select vertical m x ni matrices from A
+        m_solvers[i].init(qi, ai, lower, upper, alpha, rho, mu);
 
         // Set local view up
         lv.emplace_back(i*chunk_stride, chunk_size);
@@ -292,9 +312,9 @@ int main(int argc, char* argv[]) {
     // Construct a Distributed Optimizer and then run it
     DistributedOptimizer dqpopt = DistributedOptimizer(1, Q, A, l, u, alpha, rho, mu);
 
-    // Currently failing on this step, I think due to me passing blocks directly (and probably incorrectly)
     dqpopt.setup_solvers(12, 12);
 
+    // Currently block issues still causing problems, now in rhs calculation (line 114)
     dqpopt.parallel_update_primals();
     dqpopt.init_update_globals();
     dqpopt.parallel_update_duals();

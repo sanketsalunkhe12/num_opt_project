@@ -44,7 +44,7 @@ class DQPSolver
         // cached variables
         float rhoinv = 1.0; // 1/rho
         Eigen::MatrixXd lhs;
-        Eigen::MatrixXd rhs;
+        Eigen::VectorXd rhs;
         Eigen::LDLT<Eigen::MatrixXd> ldlt_solver;
 
         // optimization variables (primals, duals)
