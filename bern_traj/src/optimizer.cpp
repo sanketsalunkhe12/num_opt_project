@@ -265,7 +265,50 @@ Eigen::VectorXd DistributedOptimizer::getDualResiduals() {
 }
 
 int main(int argc, char* argv[]) {
-    std::cout << "Well, we made it this far...." << std::endl;
+    std::cout << "This is a basic example showing the syntax for this DQP C-ADMM solver: " << std::endl;
 
     // Simple test with basic quadratic objective function (just make a gaussian PSD for Q) and constraints which are just an Identity matrix with some noise added?
+    Eigen::MatrixXd rand = Eigen::MatrixXd::Random(36,36);
+    Eigen::MatrixXd Q = (10*rand.transpose() * 10*rand).eval();
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(36,36);
+    A(25,25) = 10.;
+    A(15,25) = 0.1432432;
+    A(5,10) = 5.;
+    A(27,18) = 2.;
+    A(29,13) = 0.5;
+    Eigen::VectorXd u = (Eigen::VectorXd::Random(36)).cwiseAbs();
+    Eigen::VectorXd l = -u;
+
+    float alpha = 1.5; 
+    float rho = 0.3;
+    float mu = 0.3;
+
+    // Print all these out?
+    // std::cout << Q << std::endl;
+    // std::cout << A << std::endl;
+    // std::cout << u << std::endl;
+    // std::cout << l << std::endl;
+
+    // Construct a Distributed Optimizer and then run it
+    DistributedOptimizer dqpopt = DistributedOptimizer(1, Q, A, l, u, alpha, rho, mu);
+
+    // Currently failing on this step, I think due to me passing blocks directly (and probably incorrectly)
+    dqpopt.setup_solvers(12, 12);
+
+    dqpopt.parallel_update_primals();
+    dqpopt.init_update_globals();
+    dqpopt.parallel_update_duals();
+
+    std::cout << "Iteration 0 : " << dqpopt.w << std::endl;
+
+    int max_iter = 10;
+    
+    // Loop C-ADMM
+    for (int i=0; i<max_iter; ++i) {
+        dqpopt.parallel_update_primals();
+        dqpopt.update_globals();
+        dqpopt.parallel_update_duals();
+    
+        std::cout << "Iteration " << i+1 << " : " << dqpopt.w << std::endl;
+    }
 }
