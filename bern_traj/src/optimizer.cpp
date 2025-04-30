@@ -20,9 +20,16 @@ GlobalIndexMap map_global_to_local_indices(
 ) {
     GlobalIndexMap index_map;
 
+    // DEBUG
+    // std::cout << "# OF W_l ENTRIES=" << global_size << std::endl;
+
     for (int j = 0; j < local_views.size(); ++j) {
+        // std::cout <<  "j=" << j  << std::endl;
+
         const auto& view = local_views[j];
         for (int i = 0; i < view.length; ++i) {
+            // std::cout << "i=" << i << std::endl;
+
             int global_index = view.start + i; //* view.stride;
             if (global_index >= 0 && global_index < global_size) {
                 index_map[global_index].emplace_back(j, i);
@@ -84,7 +91,7 @@ void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const
     // std::cout << "n=" << n << " m=" << m << std::endl;
 
     lhs = Eigen::MatrixXd::Identity(n+m, n+m);
-    lhs.topLeftCorner(n,n) = (Q + mu * Eigen::MatrixXd::Identity(n,n)).eval(); // currently where things are failing with assert issues on row/col and cwise ops
+    lhs.topLeftCorner(n,n) = (Q + mu * Eigen::MatrixXd::Identity(n,n)).eval();
     lhs.topRightCorner(n,m) = A.transpose();
     lhs.bottomLeftCorner(m,n) = A;
     lhs.bottomRightCorner(m,m) *= rhoinv;
@@ -184,6 +191,13 @@ void DistributedOptimizer::setup_solvers(int chunk_size, int chunk_stride) {
     // create empty vector for LocalView structs with correct chunk_size and start index
     std::vector<LocalView> lv;
 
+    // ADD VALIDATION!!! Check the last index to see if larger than (size of w - 1)
+    int tmp = ((m_nSolvers-1) * chunk_stride + (chunk_size-1));
+    if (tmp > (w.size()-1)) {
+        std::cout << "[ERROR] Max Index = " << tmp << std::endl;
+        throw std::runtime_error("[ERROR] The chunk size and chunk stride supplied, combined with the number of local solvers, is larger than the size of the global parameter vector 'w'.");
+    }
+
     // For each solver, initialize with the appropriate block of a given matrix (block diagonal)
     for (int i=0; i<m_nSolvers; ++i) {
         m_solvers[i] = DQPSolver();
@@ -221,6 +235,9 @@ void DistributedOptimizer::init_update_globals() {
     std::pair<int, int> p;
     for (int l=0; l<w.size(); ++l) {
         for (auto p : Gmap[l]) {
+            // DEBUG FOR THE LOVE OF THE GAME
+            // std::cout << "GMAP TRAVERSE: " << p.first << " " << p.second << std::endl;
+
             numer += mu * m_solvers[p.first].x(p.second) + m_solvers[p.first].y(p.second);
             denom += mu;
         }
@@ -230,6 +247,11 @@ void DistributedOptimizer::init_update_globals() {
         numer = 0.0;
         denom = 0.0;
     }
+    
+    // Pass ONLY VIEW OF w vector into each local solver!!!!
+    // for (int s=0; s<m_nSolvers; ++s) {
+    //     m_solvers[s].update_global(w);
+    // }
 }
 
 // simplified global update (x and w only)
@@ -242,15 +264,27 @@ void DistributedOptimizer::update_globals() {
     std::pair<int, int> p;
     for (int l=0; l<w.size(); ++l) {
         for (auto p : Gmap[l]) {
+            // DEBUG FOR THE LOVE OF THE GAME
+            // std::cout << "GMAP TRAVERSE: " << p.first << p.second << std::endl;
+
+            // This sums mu * solver_j.x_i for all relevant j and i in global to local (l -> {j,i}) mapping
             numer += mu * m_solvers[p.first].x(p.second);
             denom += mu;
         }
 
-        w[l] = alpha * numer / denom + (1 - alpha) * w[l];
+        // Slight possibility that denom is actually zero because of incorrect mapping. Should NOT update w_l in that case
+        if (std::fabs(denom) > std::numeric_limits<float>::epsilon()) {
+            w[l] = alpha * numer / denom + (1 - alpha) * w[l];
+        }
 
         numer = 0.0;
         denom = 0.0;
     }
+
+    // Pass ONLY VIEW OF w vector into each local solver!!!!
+    // for (int s=0; s<m_nSolvers; ++s) {
+    //     m_solvers[s].update_global(w);
+    // }
 }
 
 // update in parallel all local y
@@ -296,7 +330,7 @@ int main(int argc, char* argv[]) {
     A(5,10) = 5.;
     A(27,18) = 2.;
     A(29,13) = 0.5;
-    Eigen::VectorXd u = (Eigen::VectorXd::Random(36)).cwiseAbs();
+    Eigen::VectorXd u = (Eigen::VectorXd::Random(36) * 3).cwiseAbs();
     Eigen::VectorXd l = -u;
 
     float alpha = 1.5; 
@@ -310,9 +344,10 @@ int main(int argc, char* argv[]) {
     // std::cout << l << std::endl;
 
     // Construct a Distributed Optimizer and then run it
-    DistributedOptimizer dqpopt = DistributedOptimizer(1, Q, A, l, u, alpha, rho, mu);
+    DistributedOptimizer dqpopt = DistributedOptimizer(std::atoi(argv[1]), Q, A, l, u, alpha, rho, mu);
 
-    dqpopt.setup_solvers(12, 12);
+    // Read the command line args (REQUIRED NOW!) and pass to solver setup
+    dqpopt.setup_solvers(std::atoi(argv[2]), std::atoi(argv[3]));
 
     // Currently block issues still causing problems, now in rhs calculation (line 114)
     dqpopt.parallel_update_primals();
@@ -321,14 +356,15 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Iteration 0 : " << dqpopt.w << std::endl;
 
-    int max_iter = 10;
-    
-    // Loop C-ADMM
-    for (int i=0; i<max_iter; ++i) {
-        dqpopt.parallel_update_primals();
-        dqpopt.update_globals();
-        dqpopt.parallel_update_duals();
-    
-        std::cout << "Iteration " << i+1 << " : " << dqpopt.w << std::endl;
-    }
+   int max_iter = 10;
+   
+   // Loop C-ADMM
+   for (int i=0; i<max_iter; ++i) {
+       dqpopt.parallel_update_primals();
+       dqpopt.update_globals();
+       dqpopt.parallel_update_duals();
+   
+       std::cout << "Iteration " << i+1 << " : " << dqpopt.w << std::endl;
+   }
+
 }
