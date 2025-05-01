@@ -1,0 +1,80 @@
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ament_cmake: 1.3.11 (/opt/ros/humble/share/ament_cmake/cmake)
+-- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+-- Override CMake install command with custom implementation using symlinks instead of copying resources
+-- Found rclcpp: 16.0.11 (/opt/ros/humble/share/rclcpp/cmake)
+-- Found rosidl_generator_c: 3.1.6 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+-- Found rosidl_adapter: 3.1.6 (/opt/ros/humble/share/rosidl_adapter/cmake)
+-- Found rosidl_generator_cpp: 3.1.6 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+-- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+-- Found rmw_fastrtps_cpp: 6.2.7 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  
+-- Found FastRTPS: /opt/ros/humble/include  
+-- Using RMW implementation 'rmw_fastrtps_cpp' as default
+-- Looking for pthread.h
+-- Looking for pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Found rclpy: 3.3.15 (/opt/ros/humble/share/rclpy/cmake)
+-- Found nav_msgs: 4.2.4 (/opt/ros/humble/share/nav_msgs/cmake)
+-- Found uav_msgs: 0.0.0 (/home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/uav_msgs/share/uav_msgs/cmake)
+-- Found ament_lint_auto: 0.12.11 (/opt/ros/humble/share/ament_lint_auto/cmake)
+-- Added test 'cppcheck' to perform static code analysis on C / C++ code
+-- Configured cppcheck include dirs: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/bern_traj/include
+-- Configured cppcheck exclude dirs and/or files: 
+-- Added test 'flake8' to check Python code syntax and style conventions
+-- Added test 'lint_cmake' to check CMake code style
+-- Added test 'pep257' to check Python code against some of the docstring style conventions in PEP 257
+-- Added test 'uncrustify' to check C / C++ code style
+-- Configured uncrustify additional arguments: 
+-- Added test 'xmllint' to check XML markup files
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/build/bern_traj
+[ 25%] [32mBuilding CXX object CMakeFiles/trjectoryLibNumOpt.dir/src/bernstein_trajectory.cpp.o[0m
+[ 50%] [32m[1mLinking CXX shared library libtrjectoryLibNumOpt.so[0m
+[ 50%] Built target trjectoryLibNumOpt
+[ 75%] [32mBuilding CXX object CMakeFiles/trajectory_manager_num_opt.dir/src/trajectory_manager.cpp.o[0m
+[100%] [32m[1mLinking CXX executable trajectory_manager_num_opt[0m
+[100%] Built target trajectory_manager_num_opt
+-- Install configuration: ""
+-- Execute custom install script
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/lib/bern_traj/libtrjectoryLibNumOpt.so
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/lib/bern_traj/trajectory_manager_num_opt
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/include/bern_traj/admm.hpp
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/include/bern_traj/bernstein_trajectory.hpp
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/include/bern_traj/obstacle.h
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/include/bern_traj/trajectory.h
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/include/bern_traj/trajectory_manager.hpp
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/include/bern_traj/waypoint.h
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/launch/multi_traj_launch.py
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/config/multi_traj_params.yaml
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/ament_index/resource_index/package_run_dependencies/bern_traj
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/ament_index/resource_index/parent_prefix_path/bern_traj
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/environment/ament_prefix_path.sh
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/environment/ament_prefix_path.dsv
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/environment/path.sh
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/environment/path.dsv
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/local_setup.bash
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/local_setup.sh
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/local_setup.zsh
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/local_setup.dsv
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/package.dsv
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/ament_index/resource_index/packages/bern_traj
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/cmake/bern_trajConfig.cmake
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/cmake/bern_trajConfig-version.cmake
+-- Symlinking: /home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/install/bern_traj/share/bern_traj/package.xml

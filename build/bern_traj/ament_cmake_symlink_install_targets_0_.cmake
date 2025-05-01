@@ -1,0 +1,1 @@
+ament_cmake_symlink_install_targets("TARGET_FILES" "/home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/build/bern_traj/libtrjectoryLibNumOpt.so" "/home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/build/bern_traj/trajectory_manager_num_opt" "TARGETS" "trjectoryLibNumOpt" "trajectory_manager_num_opt" "DESTINATION" "lib/bern_traj")

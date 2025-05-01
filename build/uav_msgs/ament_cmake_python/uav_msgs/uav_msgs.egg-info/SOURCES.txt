@@ -1,0 +1,6 @@
+setup.py
+uav_msgs/__init__.py
+uav_msgs.egg-info/PKG-INFO
+uav_msgs.egg-info/SOURCES.txt
+uav_msgs.egg-info/dependency_links.txt
+uav_msgs.egg-info/top_level.txt

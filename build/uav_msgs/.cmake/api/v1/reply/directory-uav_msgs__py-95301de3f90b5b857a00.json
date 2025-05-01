@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "uav_msgs__py",
+		"source" : "/home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/build/uav_msgs/uav_msgs__py"
+	}
+}

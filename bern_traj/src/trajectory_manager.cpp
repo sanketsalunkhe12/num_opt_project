@@ -29,6 +29,14 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
 
     RCLCPP_INFO(this->get_logger(), "Robot name: %s", robotName.c_str());
 
+    this->declare_parameter<double>("magic_fabian_constant", 6.0);
+    this->get_parameter("magic_fabian_constant", bernsteinParams.magicFabianConstant);
+    RCLCPP_INFO(this->get_logger(), "Magic fabian constant: %f", bernsteinParams.magicFabianConstant);
+
+    this->declare_parameter<double>("time_factor", 1.0);
+    this->get_parameter("time_factor", bernsteinParams.timeFactor);
+    RCLCPP_INFO(this->get_logger(), "Time factor: %f", bernsteinParams.timeFactor);
+
     // load waypoints 
     std::vector<double> wp_raw;
     this->declare_parameter("waypoints", std::vector<double>{});

@@ -1,0 +1,88 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-aa49bd4f7d6c970a9256.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.12"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "bern_traj",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "bern_traj_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-bern_traj_uninstall-270b68b24f572af132ef.json",
+					"name" : "bern_traj_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "trajectory_manager_num_opt::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-trajectory_manager_num_opt-73392a22ae6e17e3d388.json",
+					"name" : "trajectory_manager_num_opt",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "trjectoryLibNumOpt::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-trjectoryLibNumOpt-e25fee4ebc7e9c18db70.json",
+					"name" : "trjectoryLibNumOpt",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-3ba1ee98236b957bc5f7.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/build/bern_traj",
+		"source" : "/home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/bern_traj"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}
