@@ -70,10 +70,10 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
 void TrajectoryManager::initializeTrajectory()
 {
 
-    for(int i=0; i < obstacles.size(); ++i)
-    {
-        RCLCPP_INFO(this->get_logger(), "Obstacle %d: %f, %f, %f", i, obstacles[i].position.x(), obstacles[i].position.y(), obstacles[i].position.z());
-    }
+    // for(int i=0; i < obstacles.size(); ++i)
+    // {
+    //     RCLCPP_INFO(this->get_logger(), "Obstacle %d: %f, %f, %f", i, obstacles[i].position.x(), obstacles[i].position.y(), obstacles[i].position.z());
+    // }
 
     // Call initialize after the object is fully managed by a shared_ptr
     if(currentTrajectory->initialize(&waypoints, &obstacles, nullptr))
