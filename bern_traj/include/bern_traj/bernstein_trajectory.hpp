@@ -61,6 +61,7 @@ class BernsteinTrajectory : public Trajectory
             controlPtCount: number of control points per segment (n+1)(P_0, P_1, ..., P_n)
             minDerivative: minimum derivative order (min jerk or snap of the trajectory) (m)
             trajDimension: dimension of the trajectory (x, y, z)
+            sampleSize: discritized time for obstacle avoidance linearization
 
             bernCoeffComb: combined bernstein coefficients for all segments and all dimensions
                 [P_seg1_x, ..., P_segN_x, P_seg1_y,  ..., P_segN_y, P_seg1_z,  ..., P_segN_z]
@@ -71,9 +72,10 @@ class BernsteinTrajectory : public Trajectory
                     ...,      ...,     ...;] 
         */
 
-        int waypointCount, segmentCount, //coeffCount, 
+        int waypointCount{0}, segmentCount, obstacleCount{0}, 
             controlPtCount, minDerivative, trajDimension, segIdx,
-            timeFactor, magicFabianConstant;
+            timeFactor, magicFabianConstant,
+            sampleSize{12};
         bool isSQPreplan;
         bool isObstacle, isConsensus;
         double obstacleDist, consensusDist;
@@ -82,7 +84,6 @@ class BernsteinTrajectory : public Trajectory
         Eigen::MatrixXd bernCoeff;
         std::vector<double> segmentTime;
 
-        int sampe_size = 12;
         
         // Bernstein functions
         bool solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr, 

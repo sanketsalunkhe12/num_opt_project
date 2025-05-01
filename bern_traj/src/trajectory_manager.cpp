@@ -27,16 +27,18 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
     this->declare_parameter<double>("obstacle_distance", 0.0);
     this->get_parameter("obstacle_distance", bernsteinParams.obstacleDistance);
 
-    RCLCPP_INFO(this->get_logger(), "Robot name: %s", robotName.c_str());
-
     this->declare_parameter<double>("magic_fabian_constant", 6.0);
     this->get_parameter("magic_fabian_constant", bernsteinParams.magicFabianConstant);
-    RCLCPP_INFO(this->get_logger(), "Magic fabian constant: %f", bernsteinParams.magicFabianConstant);
-
+    
     this->declare_parameter<double>("time_factor", 1.0);
     this->get_parameter("time_factor", bernsteinParams.timeFactor);
+    
+    RCLCPP_INFO(this->get_logger(), "Robot name: %s", robotName.c_str());
+    RCLCPP_INFO(this->get_logger(), "Obstacle distance: %f", bernsteinParams.obstacleDistance);
+    RCLCPP_INFO(this->get_logger(), "Magic fabian constant: %f", bernsteinParams.magicFabianConstant);
     RCLCPP_INFO(this->get_logger(), "Time factor: %f", bernsteinParams.timeFactor);
 
+    
     // load waypoints 
     std::vector<double> wp_raw;
     this->declare_parameter("waypoints", std::vector<double>{});
@@ -67,16 +69,6 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
 
 void TrajectoryManager::initializeTrajectory()
 {
-    // RCLCPP_INFO(this->get_logger(), "Loaded %ld waypoints", waypoints.size());
-    // for(int i=0; i < waypoints.size(); ++i)
-    // {
-    //     RCLCPP_INFO(this->get_logger(), "Waypoint %d: %f, %f, %f", i, waypoints[i].position.x(), waypoints[i].position.y(), waypoints[i].position.z());
-    // }
-
-    // std::vector<Obstacle> obstacles{
-    //     {Eigen::Vector3f(2.0, 2.0, 5.0)}
-    //     // {Eigen::Vector3f(7.0, 2.0, 5.0)}
-    // };
 
     for(int i=0; i < obstacles.size(); ++i)
     {
@@ -185,7 +177,6 @@ int main(int argc, char **argv)
     // Create the TrajectoryManager node as a shared_ptr
     auto trajectory_manager = std::make_shared<TrajectoryManager>(rclcpp::NodeOptions());
 
-    // Initialize the trajectory after the object is fully constructed
     trajectory_manager->initializeTrajectory();
 
     // rclcpp::spin(trajectory_manager);
