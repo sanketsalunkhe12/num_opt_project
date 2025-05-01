@@ -1,1 +1,0 @@
-/home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/consensus_traj.h

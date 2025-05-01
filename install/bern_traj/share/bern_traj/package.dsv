@@ -1,8 +1,0 @@
-source;share/bern_traj/hook/cmake_prefix_path.ps1
-source;share/bern_traj/hook/cmake_prefix_path.dsv
-source;share/bern_traj/hook/cmake_prefix_path.sh
-source;share/bern_traj/local_setup.bash
-source;share/bern_traj/local_setup.dsv
-source;share/bern_traj/local_setup.ps1
-source;share/bern_traj/local_setup.sh
-source;share/bern_traj/local_setup.zsh

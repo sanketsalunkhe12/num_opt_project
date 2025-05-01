@@ -1,1 +1,0 @@
-/home/sanket/Projects/docker_ws/num_opt_ws/src/num_opt_project/bern_traj/include/bern_traj/bernstein_trajectory.hpp
