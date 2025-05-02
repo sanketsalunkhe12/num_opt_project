@@ -122,6 +122,11 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
             
             sucess = solveOptimizedTraj(goal_wp, obstacles);
         }
+        if(sucess)
+            std::cout << "BernsteinTrajectory: Combined OSQP solver solved successfully" << std::endl;
+        else
+            std::cout << "BernsteinTrajectory: Combined OSQP solver failed" << std::endl;
+
 
         return sucess;
     }
@@ -129,6 +134,12 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
     {
         // solve in one iteration when obstacle avoidance is not active
         sucess = solveOptimizedTraj(goal_wp, obstacles);
+
+        if(sucess)
+            std::cout << "BernsteinTrajectory: Combined OSQP solver solved successfully" << std::endl;
+        else
+            std::cout << "BernsteinTrajectory: Combined OSQP solver failed" << std::endl;
+
         return sucess;
     }
     
@@ -306,6 +317,7 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
             bernCoeff.col(dim) = bernCoeffComb.block(dim*controlPtCount*segmentCount, 0, 
                                                      controlPtCount*segmentCount, 1);
         }
+        return true;
     }
     else
     {
@@ -735,13 +747,13 @@ QPIneqConstraints BernsteinTrajectory::generateCombObstacleConstraint(const std:
     return comb_obst_constraints;
 }
 
-
 QPIneqConstraints BernsteinTrajectory::generateConsensusConstraint()
 {
     QPIneqConstraints ineq_constraints;
 
     return ineq_constraints;
 }
+
 
 // solving OSQP problem
 bool BernsteinTrajectory::threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, 
@@ -881,13 +893,12 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
 
     if(exitflag != 0)
     {
-        std::cout << "BernsteinTrajectory: Combined OSQP solver failed with exitflag: " << exitflag << std::endl;
+        // std::cout << "BernsteinTrajectory: Combined OSQP solver failed with exitflag: " << exitflag << std::endl;
         return false;
     }
     else if(solver->info->status_val == OSQP_SOLVED)
     {
-        std::cout << "BernsteinTrajectory: Combined OSQP solver solved successfully" << std::endl;
-
+        // std::cout << "BernsteinTrajectory: Combined OSQP solver solved successfully" << std::endl;
         primalSol = solver->solution->x; // primal solution
         dualSol = solver->solution->y; // dual solution
 
@@ -906,8 +917,7 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     else if(solver->info->status_val == OSQP_PRIMAL_INFEASIBLE || 
             solver->info->status_val == OSQP_DUAL_INFEASIBLE)
     {
-        std::cout << "BernsteinTrajectory: Combined OSQP problem is primal dual infeasible" << std::endl;
-        
+        // std::cout << "BernsteinTrajectory: Combined OSQP problem is primal dual infeasible" << std::endl;
         primalSol = solver->solution->x; // primal solution
         dualSol = solver->solution->y; // dual solution
 
@@ -919,9 +929,7 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     }
     else
     {
-        // RCLCPP_ERROR(node_ptr->get_logger(), "Combined OSQP solver failed with status: %d", solver->info->status_val);
-        std::cout << "BernsteinTrajectory: Combined OSQP solver failed with status: " << solver->info->status_val << std::endl;
-        
+        // std::cout << "BernsteinTrajectory: Combined OSQP solver failed with status: " << solver->info->status_val << std::endl;
         primalSol = solver->solution->x; // primal solution
         dualSol = solver->solution->y; // dual solution
 
