@@ -1,6 +1,7 @@
 #include "bern_traj/trajectory_manager.hpp"
 #include <sstream>
 #include <fstream>
+#include <filesystem>
 
 TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
                 : Node("trajectory_manager", options)
@@ -88,15 +89,21 @@ void TrajectoryManager::initializeTrajectory()
         //     // publishRefTrajectory();
         // }
 
+        // make directory for saving traj data
+        std::string data_dir = "./data";
+        if (!std::filesystem::exists(data_dir)) {
+            std::filesystem::create_directory(data_dir);
+        }
+    
         // save data to txt file
         std::ofstream
-        filep("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/position_data_"+robotName+".txt");
+        filep(data_dir+"/position_data_"+robotName+".txt");
         std::ofstream
-        filev("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/velocity_data_"+robotName+".txt");
+        filev(data_dir+"/velocity_data_"+robotName+".txt");
         std::ofstream
-        filea("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/acceleration_data_"+robotName+".txt");
+        filea(data_dir+"/acceleration_data_"+robotName+".txt");
         std::ofstream
-        filej("/home/sanket/Projects/docker_ws/ros2_humble_ws/data/jerk_data_"+robotName+".txt");
+        filej(data_dir+"/jerk_data_"+robotName+".txt");
 
         for(int i=0; i<trajState.position.size(); i++)
         {
@@ -110,6 +117,23 @@ void TrajectoryManager::initializeTrajectory()
         filev.close();
         filea.close();
         filej.close();
+
+        // Save obstacle positions
+        std::ofstream fileobs(data_dir+"/obstacles.txt");
+        fileobs << bernsteinParams.obstacleDistance << std::endl; // First line is obstacle distance
+        for (const auto& obs : obstacles)
+        {
+            fileobs << obs.position.transpose() << std::endl;
+        }
+        fileobs.close();
+
+        // Save waypoints
+        std::ofstream filepts(data_dir+"/waypoints_"+robotName+".txt");
+        for (const auto& wp : waypoints)
+        {
+            filepts << wp.position.transpose() << std::endl;
+        }
+        filepts.close();
 
         // publish trajectory coefficients
         Eigen::MatrixXd coeffs = currentTrajectory->getTrajCoefficients();
