@@ -1118,4 +1118,23 @@ Eigen::MatrixXd BernsteinTrajectory::getTrajCoefficients()
     return bernCoeff;
 }
 
+double BernsteinTrajectory::getObjectiveValue() {
+    if (primalSol == nullptr) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+
+    // Get Q from the trajectory generator
+    Eigen::MatrixXd Q = generateObjectiveFunction();
+
+    // Convert primalSol to vector
+    int sol_size = Q.cols();
+    Eigen::VectorXd x(sol_size);
+    for (int i = 0; i < sol_size; ++i) {
+        x(i) = static_cast<double>(primalSol[i]);
+    }
+
+    // Compute 0.5 * xᵀQx
+    // TODO: is this correct?
+    return 0.5 * x.transpose() * Q * x;
+}
 

@@ -76,6 +76,9 @@ void TrajectoryManager::initializeTrajectory()
     //     RCLCPP_INFO(this->get_logger(), "Obstacle %d: %f, %f, %f", i, obstacles[i].position.x(), obstacles[i].position.y(), obstacles[i].position.z());
     // }
 
+    // Publisher for info about the optimizer's results
+    auto optPub = this->create_publisher<std_msgs::msg::String>("/opt_status", 10);
+
     // Call initialize after the object is fully managed by a shared_ptr
     if(currentTrajectory->initialize(&waypoints, &obstacles, nullptr))
     {
@@ -177,10 +180,20 @@ void TrajectoryManager::initializeTrajectory()
         consensusTrajPub->publish(consensus_traj_msg);
         RCLCPP_INFO(this->get_logger(), "Trajectory coefficients published");
 
+        // Publish info about the optimizer's success
+        std_msgs::msg::String msg;
+        double objVal = std::dynamic_pointer_cast<BernsteinTrajectory>(currentTrajectory)->getObjectiveValue();
+        msg.data = "{\"robot\":\"" + robotName + "\", \"feasible\": true, \"obj_val\": " + std::to_string(objVal) + "}";
+        optPub->publish(msg);
     }
     else
     {
         RCLCPP_ERROR(this->get_logger(), "Failed to initialize trajectory");
+        
+        // Publish info about the optimizer's success
+        std_msgs::msg::String msg;
+        msg.data = "{\"robot\":\"" + robotName + "\", \"feasible\": false}";
+        optPub->publish(msg);
     }
 
 
