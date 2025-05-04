@@ -9,14 +9,16 @@ from std_msgs.msg import String
 import numpy as np
 import os
 import json
+import shutil
 
 CONFIG_PATH = '../config/multi_traj_params.yaml'
-LOG_PATH = '../data/eval_results.csv'
+OTHER_CONFIG_PATH = '../../install/bern_traj/share/bern_traj/config/multi_traj_params.yaml' # NOTE: This is not an ideal way to do this, but i couldn't get other ways of updating the yaml file to work without rebuilding
+LOG_PATH = '../data'
 NUM_TRIALS = 2 # number of trajectories to generate
+SEED = 42 # makes it reproducible
 
+# TODO: fix timing so it doesn't include time waiting for messages to be published
 # TODO: add min/max vel and accel as things read from params.yaml
-# TODO: add code for more / fewer robots. change the expected_robots list to handle this
-# TODO: create graphs for time, feasibility, and obj value as function of # robots, # obstacles, # waypoints
 # TODO: create graphs for convergence rate
 # TODO: incorporate comparison between ours and standard osqp
 
@@ -64,16 +66,28 @@ def ensure_nontrivial_path(waypoints_xyz):
             return True
     return False
 
+def archive_yaml(trial_num, source_path, archive_dir='./all_configs'):
+    '''Save a copy of the config file for each trial.'''
+    os.makedirs(archive_dir, exist_ok=True)
+    filename = f"multi_traj_params_trial_{trial_num}.yaml"
+    dest_path = os.path.join(archive_dir, filename)
+    shutil.copy(source_path, dest_path)
+    print(f"Saved config for trial {trial_num} to {dest_path}")
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+
 # ------------------- Create parameters file -----------------------
 
-def generate_parameters(agent_count=3):
+def generate_parameters(agent_count=3, obstacle_count=3, waypoint_count=3):
     data = {}
     all_waypoints = []
-    obstacle_coords = create_obstacles()
+    obstacle_coords = create_obstacles(obstacle_count)
 
     for i in range(agent_count):
         while True:
-            waypoints = create_waypoints()
+            waypoints = create_waypoints(waypoint_count)
             waypoints_xyz = split_to_xyz(waypoints)
             if (check_min_distance_between_agents(all_waypoints + [waypoints_xyz], 1.5) and
                 check_waypoint_obstacle_clearance(waypoints_xyz, split_to_xyz(obstacle_coords), 1.0) and
@@ -88,20 +102,27 @@ def generate_parameters(agent_count=3):
             "obstacles": obstacle_coords,
             "obstacle_distance": 1.0,
             "magic_fabian_constant": 6.0,
-            "time_factor": 2.0,
-            "minVel": round(random.uniform(0.1, 0.5), 2),
-            "maxVel": round(random.uniform(0.6, 1.5), 2),
-            "minAcc": round(random.uniform(0.1, 0.5), 2),
-            "maxAcc": round(random.uniform(0.6, 1.5), 2),
+            "time_factor": 2.0
+            # "minVel": round(random.uniform(0.1, 0.5), 2),
+            # "maxVel": round(random.uniform(0.6, 1.5), 2),
+            # "minAcc": round(random.uniform(0.1, 0.5), 2),
+            # "maxAcc": round(random.uniform(0.6, 1.5), 2),
         }
 
         data[f"traj_manager_agent_{i + 1}"] = {"ros__parameters": params}
 
     return data
 
-def write_yaml(data, path=CONFIG_PATH):
+def write_yaml(data, path):
+    class NoAliasDumper(yaml.SafeDumper):
+        def ignore_aliases(self, data):
+            return True
+
+        def increase_indent(self, flow=False, indentless=False):
+            return super().increase_indent(flow=True, indentless=indentless)
+        
     with open(path, 'w') as f:
-        yaml.dump(data, f, sort_keys=False)
+        yaml.dump(data, f, Dumper=NoAliasDumper, default_flow_style=None, sort_keys=False)
 
 # ------------------- ROS Listener --------------------
 
@@ -145,41 +166,63 @@ def wait_for_ros_messages(expected_robots=['robot_1', 'robot_2', 'robot_3'], tim
 
 # ------------------- Main loop for running trials -----------------------
 
-def run_trials(num_trials=NUM_TRIALS):
-    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
-    with open(LOG_PATH, 'w', newline='') as csvfile:
-        fieldnames = ['trial', 'time_sec', 'robot_name', 'feasible', 'obj_val']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
+def run_single_trial(trial, num_agents, num_obstacles, num_waypoints, log_writer):
+    print(f"Running trial {trial} (agents={num_agents}, obs={num_obstacles}, wps={num_waypoints})")
 
-        for trial in range(1, num_trials + 1):
-            print(f"Running trial {trial}...")
-            param_data = generate_parameters()
-            write_yaml(param_data)
+    set_seed(SEED + trial)
+    param_data = generate_parameters(agent_count=num_agents, obstacle_count=num_obstacles, waypoint_count=num_waypoints)
+    write_yaml(param_data, CONFIG_PATH)
+    write_yaml(param_data, OTHER_CONFIG_PATH)
+    archive_yaml(trial, CONFIG_PATH)
 
-            start_time = time.time()
-            proc = subprocess.Popen(['ros2', 'launch', 'bern_traj', 'multi_traj_launch.py'])
-            results = wait_for_ros_messages(timeout_sec=20.0)
-            proc.terminate()
-            duration = time.time() - start_time
+    start_time = time.time()
+    proc = subprocess.Popen(['ros2', 'launch', 'bern_traj', 'multi_traj_launch.py'])
+    results = wait_for_ros_messages(expected_robots=[f"robot_{i+1}" for i in range(num_agents)], timeout_sec=10.0)
+    proc.terminate()
+    duration = time.time() - start_time
 
-            if results:
-                for result in results:
-                    writer.writerow({
-                        'trial': trial,
-                        'time_sec': round(duration, 2),
-                        'robot_name': result.get('robot', None),
-                        'feasible': result.get('feasible', False),
-                        'obj_val': result.get('obj_val', float('nan'))
-                    })
-            else:
-                writer.writerow({
-                    'trial': trial,
-                    'time_sec': round(duration, 2),
-                    'robot_name': result.get('robot', None),
-                    'feasible': False,
-                    'obj_val': float('nan')
-                })
+    if results:
+        for result in results:
+            log_writer.writerow({
+                'trial': trial,
+                'time_sec': round(duration, 2),
+                'robot_name': result.get('robot'),
+                'feasible': result.get('feasible', False),
+                'obj_val': result.get('obj_val', float('nan')),
+                'num_agents': num_agents,
+                'num_obstacles': num_obstacles,
+                'num_waypoints': num_waypoints
+            })
+
+def run_trial_series(varied_param, values):
+    """Run trials by varying one parameter (e.g. num of robots)."""
+    os.makedirs(LOG_PATH, exist_ok=True)
+    for val in values:
+        log_filename = os.path.join(LOG_PATH, f"{varied_param}_{val}.csv")
+        with open(log_filename, 'w', newline='') as csvfile:
+            fieldnames = ['trial', 'time_sec', 'robot_name', 'feasible', 'obj_val',
+                          'num_agents', 'num_obstacles', 'num_waypoints']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+
+            for trial in range(1, NUM_TRIALS + 1):
+                kwargs = { # Default values if not being varied
+                    'num_agents': 4,
+                    'num_obstacles': 3,
+                    'num_waypoints': 3
+                }
+                kwargs[varied_param] = val
+                run_single_trial(trial=trial, **kwargs, log_writer=writer)
+
+def run_all():
+    agent_counts = [1, 2, 3, 4, 5]
+    obstacle_counts = [1, 3, 5, 7]
+    waypoint_counts = [2, 3, 5, 7]
+
+    for param, vals in [('num_agents', agent_counts),
+                        ('num_obstacles', obstacle_counts),
+                        ('num_waypoints', waypoint_counts)]:
+        run_trial_series(param, vals)
 
 if __name__ == '__main__':
-    run_trials()
+    run_all()
