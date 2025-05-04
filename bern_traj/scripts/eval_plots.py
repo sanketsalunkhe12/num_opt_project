@@ -30,16 +30,17 @@ def plot_from_logs(varied_param, values):
 
     plt.figure(figsize=(12, 5))
 
+    param_name = varied_param.replace("_", " ").title()
     plt.subplot(1, 2, 1)
     plt.plot(values, avg_times, marker='o')
-    plt.title(f"Computation Time vs {varied_param}")
-    plt.xlabel(varied_param)
+    plt.title(f"Computation Time vs {param_name}")
+    plt.xlabel(param_name)
     plt.ylabel("Time (sec)")
 
     plt.subplot(1, 2, 2)
     plt.plot(values, avg_objs, marker='o')
-    plt.title(f"Objective Value vs {varied_param}")
-    plt.xlabel(varied_param)
+    plt.title(f"Objective Value vs {param_name}")
+    plt.xlabel(param_name)
     plt.ylabel("Objective Value")
 
     plt.tight_layout()

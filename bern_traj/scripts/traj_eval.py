@@ -10,6 +10,7 @@ import numpy as np
 import os
 import json
 import shutil
+import threading
 
 CONFIG_PATH = '../config/multi_traj_params.yaml'
 OTHER_CONFIG_PATH = '../../install/bern_traj/share/bern_traj/config/multi_traj_params.yaml' # NOTE: This is not an ideal way to do this, but i couldn't get other ways of updating the yaml file to work without rebuilding
@@ -17,9 +18,8 @@ LOG_PATH = '../data'
 NUM_TRIALS = 2 # number of trajectories to generate
 SEED = 42 # makes it reproducible
 
-# TODO: fix timing so it doesn't include time waiting for messages to be published
 # TODO: add min/max vel and accel as things read from params.yaml
-# TODO: create graphs for convergence rate
+# TODO: get data for convergence and create graphs for convergence rate
 # TODO: incorporate comparison between ours and standard osqp
 
 # ------------------- helper functions -----------------------
@@ -66,10 +66,10 @@ def ensure_nontrivial_path(waypoints_xyz):
             return True
     return False
 
-def archive_yaml(trial_num, source_path, archive_dir='./all_configs'):
+def archive_yaml(trial_num, num_agents, num_obstacles, num_waypoints, source_path, archive_dir='./all_configs'):
     '''Save a copy of the config file for each trial.'''
     os.makedirs(archive_dir, exist_ok=True)
-    filename = f"multi_traj_params_trial_{trial_num}.yaml"
+    filename = f"multi_traj_params_trial={trial_num}_agents={num_agents}_obs={num_obstacles}_pts={num_waypoints}.yaml"
     dest_path = os.path.join(archive_dir, filename)
     shutil.copy(source_path, dest_path)
     print(f"Saved config for trial {trial_num} to {dest_path}")
@@ -127,41 +127,76 @@ def write_yaml(data, path):
 # ------------------- ROS Listener --------------------
 
 class TrajResultListener(Node):
-    def __init__(self):
+    def __init__(self, expected_robots):
         super().__init__('traj_result_listener')
+        self.expected = set(expected_robots)
+        self.results_by_robot = {}
+        self.timestamps = {}
+        self.lock = threading.Lock()
         self.subscription = self.create_subscription(
             String,
             '/opt_status',
             self.listener_callback,
-            10)
-        self.results = []  # List to store multiple robot messages
+            10
+        )
 
     def listener_callback(self, msg):
-        self.get_logger().info(f"Received status: {msg.data}")
         try:
             parsed = json.loads(msg.data)
-            if isinstance(parsed, dict) and "robot" in parsed:
-                self.results.append(parsed)
-        except json.JSONDecodeError as e:
-            self.get_logger().warn(f"Failed to parse JSON: {e}")
+            robot_name = parsed.get("robot")
+            if robot_name in self.expected:
+                with self.lock:
+                    if robot_name not in self.results_by_robot:
+                        self.results_by_robot[robot_name] = parsed
+                        self.timestamps[robot_name] = time.time()
+        except json.JSONDecodeError:
+            pass
 
-def wait_for_ros_messages(expected_robots=['robot_1', 'robot_2', 'robot_3'], timeout_sec=20.0):
+def wait_for_ros_messages(expected_robots, timeout_sec=20.0):
     rclpy.init()
-    node = TrajResultListener()
-    start = time.time()
+    node = TrajResultListener(expected_robots)
 
-    received_robot_ids = set()
-    while (time.time() - start) < timeout_sec:
-        rclpy.spin_once(node, timeout_sec=0.1)
-        if expected_robots:
-            for r in node.results:
-                received_robot_ids.add(r["robot"])
-            if set(expected_robots).issubset(received_robot_ids):
-                break  # All expected robots reported
+    def spin():
+        while rclpy.ok():
+            rclpy.spin_once(node, timeout_sec=0.1)
 
-    results = node.results
-    node.destroy_node()
+    spin_thread = threading.Thread(target=spin, daemon=True)
+    spin_thread.start()
+
+    time.sleep(2.0)  # Ensure listener starts
+    proc = subprocess.Popen(['ros2', 'launch', 'bern_traj', 'multi_traj_launch.py'])
+    global_start = time.time()
+
+    while (time.time() - global_start) < timeout_sec:
+        with node.lock:
+            if set(node.results_by_robot.keys()) == set(expected_robots):
+                break
+        time.sleep(0.1)
+
+    proc.terminate()
     rclpy.shutdown()
+    spin_thread.join(timeout=1.0)
+
+    results = []
+    with node.lock:
+        for robot in expected_robots:
+            if robot in node.results_by_robot:
+                result = node.results_by_robot[robot]
+                duration = node.timestamps[robot] - global_start
+                results.append({
+                    'robot': robot,
+                    'feasible': result.get('feasible', False),
+                    'obj_val': result.get('obj_val', float('nan')),
+                    'time_sec': round(duration, 2)
+                })
+            else:
+                results.append({
+                    'robot': robot,
+                    'feasible': 'Timed out',
+                    'obj_val': float('nan'),
+                    'time_sec': float('nan')
+                })
+
     return results
 
 # ------------------- Main loop for running trials -----------------------
@@ -173,26 +208,26 @@ def run_single_trial(trial, num_agents, num_obstacles, num_waypoints, log_writer
     param_data = generate_parameters(agent_count=num_agents, obstacle_count=num_obstacles, waypoint_count=num_waypoints)
     write_yaml(param_data, CONFIG_PATH)
     write_yaml(param_data, OTHER_CONFIG_PATH)
-    archive_yaml(trial, CONFIG_PATH)
+    archive_yaml(trial, num_agents, num_obstacles, num_waypoints, CONFIG_PATH)
 
-    start_time = time.time()
-    proc = subprocess.Popen(['ros2', 'launch', 'bern_traj', 'multi_traj_launch.py'])
-    results = wait_for_ros_messages(expected_robots=[f"robot_{i+1}" for i in range(num_agents)], timeout_sec=10.0)
-    proc.terminate()
-    duration = time.time() - start_time
+    expected_robots=[f"robot_{i+1}" for i in range(num_agents)]
+    results = wait_for_ros_messages(
+        expected_robots=expected_robots,
+        timeout_sec=10.0
+    )
 
-    if results:
-        for result in results:
-            log_writer.writerow({
-                'trial': trial,
-                'time_sec': round(duration, 2),
-                'robot_name': result.get('robot'),
-                'feasible': result.get('feasible', False),
-                'obj_val': result.get('obj_val', float('nan')),
-                'num_agents': num_agents,
-                'num_obstacles': num_obstacles,
-                'num_waypoints': num_waypoints
-            })
+    # Write results to csv
+    for result in results:
+        log_writer.writerow({
+            'trial': trial,
+            'time_sec': result.get('time_sec'),
+            'robot_name': result['robot'],
+            'feasible': result['feasible'],
+            'obj_val': result['obj_val'],
+            'num_agents': num_agents,
+            'num_obstacles': num_obstacles,
+            'num_waypoints': num_waypoints
+        })
 
 def run_trial_series(varied_param, values):
     """Run trials by varying one parameter (e.g. num of robots)."""
