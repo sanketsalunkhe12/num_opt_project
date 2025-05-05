@@ -45,6 +45,7 @@ class BernsteinTrajectory : public Trajectory
         bool deactivate();
         uav_msgs::msg::PositionCmd::SharedPtr update(const nav_msgs::msg::Odometry::ConstSharedPtr msg);
 
+        double getObjectiveValue();
 
     private:
         Eigen::Vector3d start, end;
