@@ -10,11 +10,6 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
 
     bernsteinParams.trajectoryType = BERNSTEIN;
 
-    bernsteinParams.minVel = {-5.0, -5.0, -5.0};
-    bernsteinParams.maxVel = {5.0, 5.0, 5.0};
-    bernsteinParams.minAcc = {-2.0, -2.0, -2.0};
-    bernsteinParams.maxAcc = {2.0, 2.0, 2.0};
-
     bernsteinParams.controlPtCount = 12;
     bernsteinParams.minDerivative = 3;
     bernsteinParams.trajDimension = 3;
@@ -33,6 +28,26 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
     
     this->declare_parameter<double>("time_factor", 1.0);
     this->get_parameter("time_factor", bernsteinParams.timeFactor);
+
+    this->declare_parameter<std::vector<double>>("min_vel", {-5.0, -5.0, -5.0});
+    std::vector<double> min_vel;
+    this->get_parameter("min_vel", min_vel);
+    bernsteinParams.minVel = std::vector<float>(min_vel.begin(), min_vel.end());
+
+    this->declare_parameter<std::vector<double>>("max_vel", {5.0, 5.0, 5.0});
+    std::vector<double> max_vel;
+    this->get_parameter("max_vel", max_vel);
+    bernsteinParams.maxVel = std::vector<float>(max_vel.begin(), max_vel.end());
+
+    this->declare_parameter<std::vector<double>>("min_acc", {-2.0, -2.0, -2.0});
+    std::vector<double> min_acc;
+    this->get_parameter("min_acc", min_acc);
+    bernsteinParams.minAcc = std::vector<float>(min_acc.begin(), min_acc.end());
+
+    this->declare_parameter<std::vector<double>>("max_acc", {2.0, 2.0, 2.0});
+    std::vector<double> max_acc;
+    this->get_parameter("max_acc", max_acc);
+    bernsteinParams.maxAcc = std::vector<float>(max_acc.begin(), max_acc.end());
     
     RCLCPP_INFO(this->get_logger(), "Robot name: %s", robotName.c_str());
     RCLCPP_INFO(this->get_logger(), "Obstacle distance: %f", bernsteinParams.obstacleDistance);

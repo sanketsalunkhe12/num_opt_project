@@ -15,10 +15,9 @@ import threading
 CONFIG_PATH = '../config/multi_traj_params.yaml'
 OTHER_CONFIG_PATH = '../../install/bern_traj/share/bern_traj/config/multi_traj_params.yaml' # NOTE: This is not an ideal way to do this, but i couldn't get other ways of updating the yaml file to work without rebuilding
 LOG_PATH = '../data'
-NUM_TRIALS = 2 # number of trajectories to generate
+NUM_TRIALS = 5 # number of trajectories to generate
 SEED = 42 # makes it reproducible
 
-# TODO: add min/max vel and accel as things read from params.yaml
 # TODO: get data for convergence and create graphs for convergence rate
 # TODO: incorporate comparison between ours and standard osqp
 
@@ -102,11 +101,11 @@ def generate_parameters(agent_count=3, obstacle_count=3, waypoint_count=3):
             "obstacles": obstacle_coords,
             "obstacle_distance": 1.0,
             "magic_fabian_constant": 6.0,
-            "time_factor": 2.0
-            # "minVel": round(random.uniform(0.1, 0.5), 2),
-            # "maxVel": round(random.uniform(0.6, 1.5), 2),
-            # "minAcc": round(random.uniform(0.1, 0.5), 2),
-            # "maxAcc": round(random.uniform(0.6, 1.5), 2),
+            "time_factor": 2.0,
+            "minVel": [round(random.uniform(-5.0, -2.0), 2) for _ in range(3)],
+            "maxVel": [round(random.uniform(2.0, 5.0), 2) for _ in range(3)],
+            "minAcc": [round(random.uniform(-3.0, -1.0), 2) for _ in range(3)],
+            "maxAcc": [round(random.uniform(1.0, 3.0), 2) for _ in range(3)],
         }
 
         data[f"traj_manager_agent_{i + 1}"] = {"ros__parameters": params}
@@ -213,7 +212,7 @@ def run_single_trial(trial, num_agents, num_obstacles, num_waypoints, log_writer
     expected_robots=[f"robot_{i+1}" for i in range(num_agents)]
     results = wait_for_ros_messages(
         expected_robots=expected_robots,
-        timeout_sec=10.0
+        timeout_sec=20.0
     )
 
     # Write results to csv
@@ -250,9 +249,9 @@ def run_trial_series(varied_param, values):
                 run_single_trial(trial=trial, **kwargs, log_writer=writer)
 
 def run_all():
-    agent_counts = [1, 2, 3, 4, 5]
-    obstacle_counts = [1, 3, 5, 7]
-    waypoint_counts = [2, 3, 5, 7]
+    agent_counts = [1, 2, 4, 6, 8, 10]
+    obstacle_counts = [1, 3, 5, 7, 10]
+    waypoint_counts = [3, 5, 7, 9, 10]
 
     for param, vals in [('num_agents', agent_counts),
                         ('num_obstacles', obstacle_counts),
