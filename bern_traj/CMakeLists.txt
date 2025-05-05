@@ -53,6 +53,7 @@ set(dependencies
 # set(OSQP_INCLUDE_DIRS ${OSQP_INCLUDE_DIR} )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../osqp/include/public)
+#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../osqp/include/private)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../osqp/build/codegen_src/inc/public) # if headers are generated here
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../osqp/build/include/public) # if headers are generated here
 
@@ -72,6 +73,16 @@ ament_target_dependencies(trajectory_manager_num_opt ${dependencies})
 # target_link_libraries(trajectory_manager_num_opt trjectoryLibNumOpt osqp::osqp)
 target_link_libraries(trajectory_manager_num_opt trajectoryLibNumOpt osqp::osqp)
 
+target_sources(trajectory_manager_num_opt PRIVATE 
+  ${CMAKE_CURRENT_SOURCE_DIR}/../osqp/src/auxil.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/../osqp/src/osqp_api.c
+)
+
+target_include_directories(trajectory_manager_num_opt PRIVATE 
+  ${CMAKE_CURRENT_SOURCE_DIR}/../osqp/include/private
+  ${CMAKE_CURRENT_SOURCE_DIR}/../osqp/include/public
+)
+
 target_link_libraries(trajectoryLibNumOpt osqpstatic)
 
 install(TARGETS
@@ -82,8 +93,6 @@ install(TARGETS
 install(DIRECTORY
           include/
         DESTINATION include)
-
-
 
 
 if(BUILD_TESTING)

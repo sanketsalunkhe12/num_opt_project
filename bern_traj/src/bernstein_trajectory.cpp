@@ -1,7 +1,7 @@
 #include "bern_traj/bernstein_trajectory.hpp"
-#include "osqp.h"
-#include "osqp_api_utils.h"
-#include "osqp_api_functions.h"
+#include "osqp/osqp.h"
+#include "osqp/osqp_api_utils.h"
+#include "osqp/osqp_api_functions.h"
 #include <Eigen/Sparse>
 
 BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
@@ -696,7 +696,7 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     OSQPInt exitflag = 0;
     OSQPInt n = bernCoeffComb.size();
 
-    DQPSolver *solver; 
+    OSQPSolver *solver; 
     OSQPSettings *settings;  
     OSQPCscMatrix *primal_sol = (OSQPCscMatrix *)malloc(sizeof(OSQPCscMatrix));
     OSQPCscMatrix *dual_sol = (OSQPCscMatrix *)malloc(sizeof(OSQPCscMatrix));
@@ -715,11 +715,30 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     }
 
     // Setup workspace
-    exitflag = dqp_setup(&solver, primal_sol, q, dual_sol, l, u, m, n, settings);
+    exitflag = osqp_setup(&solver, primal_sol, q, dual_sol, l, u, m, n, settings);
     
     auto start = std::chrono::high_resolution_clock::now();
 
-    exitflag = dqp_solve(solver);
+    if(isSQPreplan)
+        osqp_warm_start(solver, primalSol, dualSol);
+    else
+        osqp_warm_start(solver, primalSol, nullptr);
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    isSQPreplan = true;
+
+    exitflag = osqp_solve(solver);
+
+    // dqp_solve_init(solver);
+    // int N = 3; // Max number of iterations
+    // for (int i = 0; i < N; i++){
+    //     printf(" [DQP Iteration] iteration number %d\n", (int)i);
+    //     dqp_solve_primal(solver,i);
+    //     OSQPVectorf* soln = dqp_get_soln(solver);
+    //     dqp_solve_global(solver,soln); 
+    //     dqp_solve_dual(solver,i);
+    // }
 
     if(exitflag != 0)
     {
@@ -736,7 +755,7 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
         {
             bernCoeffComb(i) = x[i]; 
         }
-        dqp_cleanup(solver);
+        osqp_cleanup(solver);
         return true;
     }
     else if(solver->info->status_val == OSQP_PRIMAL_INFEASIBLE) 

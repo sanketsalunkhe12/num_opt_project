@@ -163,12 +163,12 @@ CMakeFiles/trajectoryLibNumOpt.dir/clean:
 CMakeFiles/trajectory_manager_num_opt.dir/all: CMakeFiles/trajectoryLibNumOpt.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles --progress-num=3,4 "Built target trajectory_manager_num_opt"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles --progress-num=3,4,5,6 "Built target trajectory_manager_num_opt"
 .PHONY : CMakeFiles/trajectory_manager_num_opt.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/trajectory_manager_num_opt.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles 6
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/trajectory_manager_num_opt.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles 0
 .PHONY : CMakeFiles/trajectory_manager_num_opt.dir/rule

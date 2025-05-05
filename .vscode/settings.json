@@ -1,6 +1,13 @@
 {
     "files.associations": {
         "osqp_api_types.h": "c",
-        "osqp_api_functions.h": "c"
+        "osqp_api_functions.h": "c",
+        "random": "c",
+        "algebra_matrix.h": "c",
+        "typeindex": "c",
+        "typeinfo": "c",
+        "string_view": "c",
+        "regex": "c",
+        "chrono": "cpp"
     }
 }

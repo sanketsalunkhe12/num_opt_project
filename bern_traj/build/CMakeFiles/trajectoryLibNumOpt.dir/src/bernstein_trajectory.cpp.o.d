@@ -850,14 +850,17 @@ CMakeFiles/trajectoryLibNumOpt.dir/src/bernstein_trajectory.cpp.o: \
  /usr/local/include/uav_msgs/uav_msgs/msg/detail/position_cmd__traits.hpp \
  /usr/local/include/uav_msgs/uav_msgs/msg/detail/position_cmd__type_support.hpp \
  /usr/local/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
- /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/include/public/osqp.h \
+ /usr/local/include/osqp/osqp.h /usr/local/include/osqp/osqp_configure.h \
+ /usr/local/include/osqp/osqp_api_constants.h \
+ /usr/local/include/osqp/osqp_api_types.h \
+ /usr/local/include/osqp/osqp_api_functions.h \
+ /usr/local/include/osqp/osqp_export_define.h \
+ /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/include/public/../private/algebra_vector.h \
+ /home/tddevries/numerical_optimization_project/num_opt_project/osqp/include/private/glob_opts.h \
  /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/build/include/public/osqp_configure.h \
- /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/include/public/osqp_api_constants.h \
- /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/include/public/osqp_api_types.h \
- /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/include/public/osqp_api_functions.h \
- /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/include/public/osqp_export_define.h \
- /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/include/public/osqp_api_utils.h \
- /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/../osqp/include/public/osqp_api_functions.h \
+ /usr/include/c++/11/math.h /usr/local/include/osqp/osqp_api_utils.h \
+ /usr/local/include/osqp/osqp_api_utils.h \
+ /usr/local/include/osqp/osqp_api_functions.h \
  /usr/include/eigen3/Eigen/Sparse /usr/include/eigen3/Eigen/SparseCore \
  /usr/include/eigen3/Eigen/src/SparseCore/SparseUtil.h \
  /usr/include/eigen3/Eigen/src/SparseCore/SparseMatrixBase.h \

@@ -83,14 +83,46 @@ CMakeFiles/trajectory_manager_num_opt.dir/src/trajectory_manager.cpp.s: cmake_fo
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/trajectory_manager_num_opt.dir/src/trajectory_manager.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/src/trajectory_manager.cpp -o CMakeFiles/trajectory_manager_num_opt.dir/src/trajectory_manager.cpp.s
 
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o: CMakeFiles/trajectory_manager_num_opt.dir/flags.make
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o: /home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o: CMakeFiles/trajectory_manager_num_opt.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building C object CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o -MF CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o.d -o CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o -c /home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c
+
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c > CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.i
+
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c -o CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.s
+
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o: CMakeFiles/trajectory_manager_num_opt.dir/flags.make
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o: /home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o: CMakeFiles/trajectory_manager_num_opt.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building C object CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o -MF CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o.d -o CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o -c /home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c
+
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c > CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.i
+
+CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c -o CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.s
+
 # Object files for target trajectory_manager_num_opt
 trajectory_manager_num_opt_OBJECTS = \
-"CMakeFiles/trajectory_manager_num_opt.dir/src/trajectory_manager.cpp.o"
+"CMakeFiles/trajectory_manager_num_opt.dir/src/trajectory_manager.cpp.o" \
+"CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o" \
+"CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o"
 
 # External object files for target trajectory_manager_num_opt
 trajectory_manager_num_opt_EXTERNAL_OBJECTS =
 
 trajectory_manager_num_opt: CMakeFiles/trajectory_manager_num_opt.dir/src/trajectory_manager.cpp.o
+trajectory_manager_num_opt: CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o
+trajectory_manager_num_opt: CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o
 trajectory_manager_num_opt: CMakeFiles/trajectory_manager_num_opt.dir/build.make
 trajectory_manager_num_opt: libtrajectoryLibNumOpt.so
 trajectory_manager_num_opt: /usr/local/lib/libosqp.so
@@ -181,7 +213,7 @@ trajectory_manager_num_opt: /opt/ros/humble/lib/librosidl_runtime_c.so
 trajectory_manager_num_opt: /opt/ros/humble/lib/librcutils.so
 trajectory_manager_num_opt: /usr/lib/x86_64-linux-gnu/libpython3.10.so
 trajectory_manager_num_opt: CMakeFiles/trajectory_manager_num_opt.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX executable trajectory_manager_num_opt"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable trajectory_manager_num_opt"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/trajectory_manager_num_opt.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

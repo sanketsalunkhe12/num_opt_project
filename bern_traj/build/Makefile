@@ -223,6 +223,54 @@ trajectory_manager_num_opt/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/build
 .PHONY : trajectory_manager_num_opt/fast
 
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.o: home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.o
+
+# target to build an object file
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.o
+
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.i: home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.i
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.i
+
+# target to preprocess a source file
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.i
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.i
+
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.s: home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.s
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.s
+
+# target to generate assembly for a file
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.s
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.c.s
+
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.o: home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.o
+
+# target to build an object file
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.o
+
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.i: home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.i
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.i
+
+# target to preprocess a source file
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.i
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.i
+
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.s: home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.s
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.s
+
+# target to generate assembly for a file
+home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/trajectory_manager_num_opt.dir/build.make CMakeFiles/trajectory_manager_num_opt.dir/home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.s
+.PHONY : home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.c.s
+
 src/bernstein_trajectory.o: src/bernstein_trajectory.cpp.o
 .PHONY : src/bernstein_trajectory.o
 
@@ -288,6 +336,12 @@ help:
 	@echo "... uninstall"
 	@echo "... trajectoryLibNumOpt"
 	@echo "... trajectory_manager_num_opt"
+	@echo "... home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.o"
+	@echo "... home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.i"
+	@echo "... home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/auxil.s"
+	@echo "... home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.o"
+	@echo "... home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.i"
+	@echo "... home/tddevries/numerical_optimization_project/num_opt_project/osqp/src/osqp_api.s"
 	@echo "... src/bernstein_trajectory.o"
 	@echo "... src/bernstein_trajectory.i"
 	@echo "... src/bernstein_trajectory.s"
