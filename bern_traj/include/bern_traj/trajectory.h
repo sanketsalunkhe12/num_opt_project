@@ -3,7 +3,7 @@
 
 #include "eigen3/Eigen/Dense"
 #include "bern_traj/waypoint.h"
-// for std::max
+#include "bern_traj/obstacle.h"
 #include <algorithm>
 
 #include "rclcpp/rclcpp.hpp"
@@ -32,25 +32,39 @@ struct TrajectoryParams
     // berstein related params
     int controlPtCount{12}, minDerivative{3}, trajDimension{3};
     float magicFabianConstant{6.0}, timeFactor{1.0};
+    double obstacleDistance{0.0}, consensusDistance{0.0};
+};
+
+struct TrajectoryState
+{
+    std::vector<Eigen::Vector3d> position;
+    std::vector<Eigen::Vector3d> velocity;
+    std::vector<Eigen::Vector3d> acceleration;
+    std::vector<Eigen::Vector3d> jerk;
 };
 
 
 class Trajectory
 {
     public:
-            // change double to float
+        // change double to float
         virtual Eigen::Vector3d getRefPosition(double &time_) = 0;
         virtual Eigen::Vector3d getRefVelocity(double &time_) = 0;
         virtual Eigen::Vector3d getRefAcceleration(double &time_) = 0;
         virtual Eigen::Vector3d getRefJerk(double &time_) = 0;
 
+        virtual Eigen::MatrixXd getTrajCoefficients() = 0;
+
+        virtual TrajectoryState calculateTrajectory() = 0; 
+        
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryPosition() = 0;
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryVelocity() = 0;
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryAcceleration() = 0;
         // virtual Eigen::Vector<Eigen::Vector3d> getTrajectoryJerk() = 0;
 
         virtual bool initialize(//rclcpp::Node::SharedPtr node_ptr, 
-                                const std::vector<Waypoint> *goal_wp, 
+                                const std::vector<Waypoint> *goal_wp,
+                                const std::vector<Obstacle> *obstacles, 
                                 const nav_msgs::msg::Odometry::ConstSharedPtr msg) = 0;
         virtual bool generateTrajectory(const Eigen::Vector3f &xi, const Eigen::Vector3f &xf,
                                         const Eigen::Vector3f &vi, const Eigen::Vector3f &vf,

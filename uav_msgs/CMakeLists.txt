@@ -20,7 +20,8 @@ set(dependencies
 )
 
 set(msg_list
-    "msg/PositionCmd.msg")
+    "msg/PositionCmd.msg"
+    "msg/ConsensusTraj.msg")
 
 rosidl_generate_interfaces(${PROJECT_NAME}
     ${msg_list}

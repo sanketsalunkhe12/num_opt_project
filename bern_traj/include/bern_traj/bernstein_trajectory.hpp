@@ -2,7 +2,7 @@
 #define BERNSTEIN_TRAJECTORY_HPP
 
 #include "trajectory.h"
-
+#include "osqp/osqp.h"
 
 struct QPEqConstraints
 {
@@ -30,8 +30,11 @@ class BernsteinTrajectory : public Trajectory
         Eigen::Vector3d getRefAcceleration(double &time_);
         Eigen::Vector3d getRefJerk(double &time_);
 
+        Eigen::MatrixXd getTrajCoefficients();
+
         bool initialize(//rclcpp::Node::SharedPtr node_ptr, 
                         const std::vector<Waypoint> *goal_wp, 
+                        const std::vector<Obstacle> *obstacles,
                         const nav_msgs::msg::Odometry::ConstSharedPtr msg);
         bool generateTrajectory(const Eigen::Vector3f &xi, const Eigen::Vector3f &xf,
                                 const Eigen::Vector3f &vi, const Eigen::Vector3f &vf,
@@ -58,6 +61,7 @@ class BernsteinTrajectory : public Trajectory
             controlPtCount: number of control points per segment (n+1)(P_0, P_1, ..., P_n)
             minDerivative: minimum derivative order (min jerk or snap of the trajectory) (m)
             trajDimension: dimension of the trajectory (x, y, z)
+            sampleSize: discritized time for obstacle avoidance linearization
 
             bernCoeffComb: combined bernstein coefficients for all segments and all dimensions
                 [P_seg1_x, ..., P_segN_x, P_seg1_y,  ..., P_segN_y, P_seg1_z,  ..., P_segN_z]
@@ -68,17 +72,22 @@ class BernsteinTrajectory : public Trajectory
                     ...,      ...,     ...;] 
         */
 
-        int waypointCount, segmentCount, //coeffCount, 
+        int waypointCount{0}, segmentCount, obstacleCount{0}, 
             controlPtCount, minDerivative, trajDimension, segIdx,
-            timeFactor, magicFabianConstant;
-        bool replan;
+            timeFactor, magicFabianConstant,
+            sampleSize{12};
+        bool isSQPreplan;
+        bool isObstacle, isConsensus;
+        double obstacleDist, consensusDist;
         Eigen::VectorXd bernCoeffComb;
+        OSQPFloat *primalSol, *dualSol;
         Eigen::MatrixXd bernCoeff;
         std::vector<double> segmentTime;
+
         
         // Bernstein functions
         bool solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr, 
-            const std::vector<Waypoint> *goal_wp);
+            const std::vector<Waypoint> *goal_wp, const std::vector<Obstacle> *obstacles);
         
         void generateSegmentTime(const std::vector<Waypoint> *goal_wp);
 
@@ -91,6 +100,12 @@ class BernsteinTrajectory : public Trajectory
         // constraint generation
         QPEqConstraints generateEqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp);
         QPIneqConstraints generateIneqConstraint(int &dimension_, const std::vector<Waypoint> *goal_wp);
+        QPIneqConstraints generateObstacleConstraint(int &dimension_,const std::vector<Obstacle> *obstacles);
+        
+        QPIneqConstraints generateCombObstacleConstraint(const std::vector<Obstacle> *obstacles);
+
+        
+        QPIneqConstraints generateConsensusConstraint();
 
         // solving OSQP problem
         bool threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, QPIneqConstraints &ineq_constraints);//, 
@@ -99,7 +114,9 @@ class BernsteinTrajectory : public Trajectory
                             QPIneqConstraints &ineq_constraints_comb);//, rclcpp::Node::SharedPtr node_ptr);
 
         // post optimization
-        void calculateTrajectory();
+        std::vector<Eigen::Vector3d> refPosition, refVelocity, refAcceleration, refJerk;
+
+        TrajectoryState calculateTrajectory();
 
         Eigen::Vector3d calculatePosition(double &time_, int &segmentIndex);
         Eigen::Vector3d calculateVelocity(double &time_, int &segmentIndex);
@@ -113,7 +130,6 @@ class BernsteinTrajectory : public Trajectory
         
         Eigen::VectorXd getConvolutionVector();
         double getSegmentTime(int segIdx_);
-        Eigen::MatrixXd getBernCoefficients();
 
 };
 
