@@ -14,8 +14,10 @@
 struct Obstacle
 {
     Eigen::Vector3d position{0.0, 0.0, 0.0};
-    float length{0.0}, width{0.0}, height{0.0};
+    double length{0.0}, width{0.0}, height{0.0};
     
+    // Constructor that allows initialization with just a position
+    Obstacle(const Eigen::Vector3d& pos) : position(pos) {}
 };
 
 #endif // OBSTACLE_H

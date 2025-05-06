@@ -1,0 +1,11 @@
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/uninstall.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/bern_traj_uninstall.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/trajectoryLibNumOpt.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/trajectory_manager_num_opt.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/test.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/edit_cache.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/rebuild_cache.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/list_install_components.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/install.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/install/local.dir
+/home/tddevries/numerical_optimization_project/num_opt_project/bern_traj/build/bern_traj/CMakeFiles/install/strip.dir

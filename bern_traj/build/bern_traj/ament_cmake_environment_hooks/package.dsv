@@ -1,0 +1,4 @@
+source;share/bern_traj/local_setup.bash
+source;share/bern_traj/local_setup.dsv
+source;share/bern_traj/local_setup.sh
+source;share/bern_traj/local_setup.zsh

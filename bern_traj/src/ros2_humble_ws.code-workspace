@@ -5,9 +5,6 @@
 		},
 		{
 			"path": "../../../.."
-		},
-		{
-			"path": "../../../../../osqp"
 		}
 	],
 	"settings": {
@@ -77,11 +74,7 @@
 			"thread": "cpp",
 			"cinttypes": "cpp",
 			"typeindex": "cpp",
-			"typeinfo": "cpp",
-			"regex": "cpp",
-			"future": "cpp",
-			"variant": "cpp",
-			"core": "cpp"
+			"typeinfo": "cpp"
 		}
 	}
 }

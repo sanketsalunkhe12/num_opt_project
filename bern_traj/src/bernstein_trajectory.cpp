@@ -1,6 +1,4 @@
 #include "bern_traj/bernstein_trajectory.hpp"
-#include "osqp/osqp_api_utils.h"
-#include "osqp/osqp_api_functions.h"
 #include <Eigen/Sparse>
 #include <sstream>
 #include <fstream>
@@ -46,12 +44,6 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
                                     const nav_msgs::msg::Odometry::ConstSharedPtr msg)
 {
     // std::cout << "BernsteinTrajectory: Initializing trajectory" << std::endl;
-    
-    // timeFactor = node_ptr->declare_parameter("time_factor", 1.0);
-    // magicFabianConstant = node_ptr->declare_parameter("magic_fabian_constant", 6.0);
-    
-    // node_ptr->get_parameter("time_factor", timeFactor);
-    // node_ptr->get_parameter("magic_fabian_constant", magicFabianConstant);
 
     waypointCount = goal_wp->size();
     obstacleCount = obstacles->size();
@@ -867,14 +859,14 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
     OSQPInt exitflag = 0;
     OSQPInt n = bernCoeffComb.size();
 
-    OSQPSolver *solver; 
+    OSQPSolver *solver;
     OSQPSettings *settings;  
     OSQPCscMatrix *primal_sol = (OSQPCscMatrix *)malloc(sizeof(OSQPCscMatrix));
     OSQPCscMatrix *dual_sol = (OSQPCscMatrix *)malloc(sizeof(OSQPCscMatrix));
 
     csc_set_data(primal_sol, n, n, P_nnz, P_x, P_i, P_p);
     csc_set_data(dual_sol, m, n, A_nnz, A_x, A_i, A_p);
-    
+
     // Define solver settings as default
     settings = (OSQPSettings *)malloc(sizeof(OSQPSettings));
     if(settings)
@@ -897,16 +889,32 @@ bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraint
 
     isSQPreplan = true;
 
-    if(isSQPreplan)
-        osqp_warm_start(solver, primalSol, dualSol);
-    else
-        osqp_warm_start(solver, primalSol, nullptr);
+    // [TD] Residual and objective history additions
 
-    auto start = std::chrono::high_resolution_clock::now();
+    // Add history for the primal & dual residuals and objective
+    int max_iters = (int)solver->settings->max_iter;
 
-    isSQPreplan = true;
+    float* prim_res_history = (float*)malloc(max_iters * sizeof(float));
+    float* dual_res_history = (float*)malloc(max_iters * sizeof(float));
+    float* obj_val_history = (float*)malloc(max_iters * sizeof(float));
+    solver->info->prim_res_history = prim_res_history;
+    solver->info->dual_res_history = dual_res_history;
+    solver->info->obj_val_history = obj_val_history;
+    solver->info->history_len = &max_iters;
 
     exitflag = osqp_solve(solver);
+
+    // [TD] Print out the residuals and objective value each iteration
+    std::cout << "[DEBUG] Iteration History:\n";
+
+    int fin_iter = (int)solver->info->iter; 
+    for (int i = 0; i < fin_iter; ++i) {
+        std::cout << "Iter " << i << ": "
+                  << "Prim Res = " << prim_res_history[i] << ", "
+                  << "Dual Res = " << dual_res_history[i] << ", "
+                  << "Obj Val = " << obj_val_history[i] << std::endl;
+    }
+
 
     // dqp_solve_init(solver);
     // int N = 3; // Max number of iterations
@@ -1144,5 +1152,3 @@ Eigen::MatrixXd BernsteinTrajectory::getTrajCoefficients()
 {
     return bernCoeff;
 }
-
-
