@@ -33,6 +33,8 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
     // RH: Adding switch flag for OSQP or DQP solver
     solverType = 0; // 0 is default = OSQP, 1 is DQP
 
+    std::cout << "[DEBUG] BernsteinTrajectory::Constructor --- Solver Type: " << solverType << std::endl;
+
     // waypointCount = bernstein_params_.waypoints.size();
 }
 
@@ -65,6 +67,8 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_, in
 
     // RH: Adding switch flag for OSQP or DQP solver
     solverType = solverType; // 0 is default = OSQP, 1 is DQP
+
+    std::cout << "[DEBUG] BernsteinTrajectory::Constructor --- Solver Type: " << solverType << std::endl;
 
     // waypointCount = bernstein_params_.waypoints.size();
 }
@@ -352,12 +356,10 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
          std::cout << "[INFO] BernsteinTrajectory: Running with OSQP Trajectory Solver..." << std::endl;
 	 success = combOSQPSolver(Q_comb, eq_constraints_comb, ineq_constraints_comb);
          break;
-
     case 1:
          std::cout << "[INFO] BernsteinTrajectory: Running with DQP Distributed Trajectory Solver..." << std::endl;
          success = combDQPSolver(Q_comb, eq_constraints_comb, ineq_constraints_comb);
          break;
-
     }
 
     // solving combined OSQP problem

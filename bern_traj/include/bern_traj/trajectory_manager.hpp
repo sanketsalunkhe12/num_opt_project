@@ -24,8 +24,9 @@ class TrajectoryManager : public rclcpp::Node, public std::enable_shared_from_th
         std::string robotName;
 
         TrajectoryParams bernsteinParams;
-        
-        std::shared_ptr<Trajectory> currentTrajectory = std::make_shared<BernsteinTrajectory>(bernsteinParams); // should be a null trajectory
+
+	// RH: THIS MUST BE INITIALIZED WITH A SOLVER TYPE FOR DQP TO TAKE EFFECT        
+        std::shared_ptr<Trajectory> currentTrajectory = std::make_shared<BernsteinTrajectory>(bernsteinParams, solverType); // should be a null trajectory
      
         
         // publisher
