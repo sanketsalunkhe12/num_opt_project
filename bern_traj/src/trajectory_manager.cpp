@@ -20,6 +20,9 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
     this->declare_parameter<std::string>("robot_name", "robot_0");
     this->get_parameter("robot_name", robotName);
 
+    this->declare_parameter<int>("solverType", 0); // RH: Defaults to OSQP Solver
+    this->get_parameter("solverType", solverType);
+
     this->declare_parameter<double>("obstacle_distance", 0.0);
     this->get_parameter("obstacle_distance", bernsteinParams.obstacleDistance);
 
@@ -54,7 +57,9 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
     RCLCPP_INFO(this->get_logger(), "Magic fabian constant: %f", bernsteinParams.magicFabianConstant);
     RCLCPP_INFO(this->get_logger(), "Time factor: %f", bernsteinParams.timeFactor);
 
-    
+    std::string solverTypeMsg = (solverType == 1) ? "DQP" : "OSQP";
+    RCLCPP_INFO(this->get_logger(), "Solver Type: %s", solverTypeMsg.c_str());
+
     // load waypoints 
     std::vector<double> wp_raw;
     this->declare_parameter("waypoints", std::vector<double>{});
@@ -80,7 +85,7 @@ TrajectoryManager::TrajectoryManager(const rclcpp::NodeOptions &options)
     consensusTrajPub = this->create_publisher<uav_msgs::msg::ConsensusTraj>("consensus_traj", 10);
     positionCmdPub = this->create_publisher<uav_msgs::msg::PositionCmd>("position_cmd", 10);
 
-    currentTrajectory = std::make_shared<BernsteinTrajectory>(bernsteinParams);
+    currentTrajectory = std::make_shared<BernsteinTrajectory>(bernsteinParams, solverType); // RH: Need to use this constructor to explicitly pass solverType int
 }
 
 void TrajectoryManager::initializeTrajectory()

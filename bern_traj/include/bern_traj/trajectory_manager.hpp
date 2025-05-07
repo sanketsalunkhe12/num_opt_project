@@ -17,6 +17,7 @@ class TrajectoryManager : public rclcpp::Node, public std::enable_shared_from_th
 
         void initializeTrajectory();
     private:
+        int solverType;
         std::vector<Waypoint> waypoints;
         std::vector<Obstacle> obstacles;
         std::string trajectoryType;

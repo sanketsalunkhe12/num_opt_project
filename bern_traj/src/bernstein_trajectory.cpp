@@ -30,6 +30,42 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
     isSQPreplan = false;
     isObstacle = false;
 
+    // RH: Adding switch flag for OSQP or DQP solver
+    solverType = 0; // 0 is default = OSQP, 1 is DQP
+
+    // waypointCount = bernstein_params_.waypoints.size();
+}
+
+BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_, int solverType)
+{
+    // std::cout << "BernsteinTrajectory: Constructor" << std::endl;
+    
+    isStarted = false;
+    isCompleted = false;
+
+    minVel = bernstein_params_.minVel;
+    maxVel = bernstein_params_.maxVel;
+
+    minAcc = bernstein_params_.minAcc;
+    maxAcc = bernstein_params_.maxAcc;
+
+    controlPtCount = bernstein_params_.controlPtCount;
+    minDerivative = bernstein_params_.minDerivative;
+    trajDimension = bernstein_params_.trajDimension; // (x, y, z)
+
+    magicFabianConstant = bernstein_params_.magicFabianConstant;
+    timeFactor = bernstein_params_.timeFactor;
+
+    obstacleDist = bernstein_params_.obstacleDistance;
+    consensusDist = bernstein_params_.consensusDistance;
+
+    segIdx = 0;
+    isSQPreplan = false;
+    isObstacle = false;
+
+    // RH: Adding switch flag for OSQP or DQP solver
+    solverType = solverType; // 0 is default = OSQP, 1 is DQP
+
     // waypointCount = bernstein_params_.waypoints.size();
 }
 
@@ -64,6 +100,7 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
     segmentCount = waypointCount - 1;
     bernCoeffComb = Eigen::VectorXd::Zero(segmentCount * trajDimension * controlPtCount);
     bernCoeff = Eigen::MatrixXd::Zero(segmentCount * controlPtCount, trajDimension);
+
     primalSol = new OSQPFloat[segmentCount * trajDimension * controlPtCount];
     dualSol = new OSQPFloat[segmentCount * trajDimension * controlPtCount];
 
@@ -83,6 +120,7 @@ bool BernsteinTrajectory::initialize(// rclcpp::Node::SharedPtr node_ptr,
             primalSol[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = p_(1);
             primalSol[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = p_(2);
 
+            // Maybe I can just use bernCoeffComb for DQP? Should be identical at k=0?
             bernCoeffComb[(controlPtCount*segmentCount*0) + (i*controlPtCount) + j] = p_(0);
             bernCoeffComb[(controlPtCount*segmentCount*1) + (i*controlPtCount) + j] = p_(1);
             bernCoeffComb[(controlPtCount*segmentCount*2) + (i*controlPtCount) + j] = p_(2); 
@@ -307,8 +345,22 @@ bool BernsteinTrajectory::solveOptimizedTraj(//rclcpp::Node::SharedPtr node_ptr,
     // std::cout << "BernsteinTrajectory: ineq constraints vector: \n" << ineq_constraints_comb.f << std::endl;
 
 
+    // RH: Insert switch for choosing between OSQP(0) and DQP(1), though I really should make these Enums.....
+    bool success;
+    switch(solverType) {
+    case 0:
+         std::cout << "[INFO] BernsteinTrajectory: Running with OSQP Trajectory Solver..." << std::endl;
+	 success = combOSQPSolver(Q_comb, eq_constraints_comb, ineq_constraints_comb);
+         break;
+
+    case 1:
+         std::cout << "[INFO] BernsteinTrajectory: Running with DQP Distributed Trajectory Solver..." << std::endl;
+         success = combDQPSolver(Q_comb, eq_constraints_comb, ineq_constraints_comb);
+         break;
+
+    }
+
     // solving combined OSQP problem
-    bool success = combOSQPSolver(Q_comb, eq_constraints_comb, ineq_constraints_comb);//, node_ptr);
     if(success)
     {
         bernCoeff = Eigen::MatrixXd::Zero(segmentCount * controlPtCount, trajDimension);
@@ -760,6 +812,113 @@ bool BernsteinTrajectory::threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &
                                             QPIneqConstraints &ineq_constraints)//, rclcpp::Node::SharedPtr node_ptr)
 {
     return true;
+}
+
+
+bool BernsteinTrajectory::combDQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraints &eq_constraints_comb, 
+                                        QPIneqConstraints &ineq_constraints_comb)//, rclcpp::Node::SharedPtr node_ptr)
+{
+    /*
+        Standard QP problem for DQP solver:
+        min 1/2 x^T * Q * x
+        st l <= Ax <= u
+        where Q is a positive semidefinite matrix
+        A is a matrix of constraints (both eq and ineq combined)
+
+        warm start if we have some initial guess for the solution like previous solution
+        useful in case of replanning or updating the trajectory
+    */
+    // std::cout << "BernsteinTrajectory: Solving combined DQP problem" << std::endl;
+
+    // combine all eq and ineq constraints
+    Eigen::MatrixXd combConstraints = Eigen::MatrixXd::Zero(eq_constraints_comb.A.rows() + ineq_constraints_comb.C.rows(), 
+                                                            bernCoeffComb.size());
+    combConstraints.block(0, 0, eq_constraints_comb.A.rows(), bernCoeffComb.size()) = eq_constraints_comb.A;
+    combConstraints.block(eq_constraints_comb.A.rows(), 0, ineq_constraints_comb.C.rows(), bernCoeffComb.size()) = ineq_constraints_comb.C;
+    
+    int m = combConstraints.rows(); 
+    Eigen::VectorXd l(m); // lower bound of constraints
+    Eigen::VectorXd u(m); // upper bound of constraints
+
+    // RH: Set up our lower and upper bound vectors
+    u(Eigen::seqN(0, eq_constraints_comb.A.rows())) = eq_constraints_comb.b;
+    l(Eigen::seqN(0, eq_constraints_comb.A.rows())) = eq_constraints_comb.b;
+    u(Eigen::seq(eq_constraints_comb.A.rows(), Eigen::last)) = ineq_constraints_comb.f;
+    l(Eigen::seq(eq_constraints_comb.A.rows(), Eigen::last)) = ineq_constraints_comb.d;
+
+    // RH: Execute our solver loop for fixed iterations (for now)
+    int max_iter = 50;
+    
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // RH: Before executing solve, we should set the global w variable to the interpolation guess (warm start)
+    // RH:    Likewise, we should initialize all other primal and dual vectors randomly between lower and upper bound vectors?
+    // RH: Paste in my example script here, with some tweaks to ensure correct step size and number of local solvers based on # segments in trajectory
+
+    // Make these configurable instead of hardcoded
+    float alpha = 1.5;
+    float rho = 0.3;
+    float mu = 0.3;
+
+    // Construct a Distributed Optimizer and then run it (Q_comb is Q, combConstraints is A)
+    DistributedOptimizer dqpopt = DistributedOptimizer(segmentCount-2, Q_comb, combConstraints, l, u, alpha, rho, mu);
+
+    // Hardcoding for our problem for now... 12 coeffs per segment of trajectory
+    dqpopt.setup_solvers(12, 12);
+
+    // Init w to bernCoeffComb interpolation guess
+    dqpopt.w = bernCoeffComb; // Ugh I may need to double check this due to flattening vs rectangular coeff matrix :(
+
+    dqpopt.parallel_update_primals();
+    dqpopt.init_update_globals();
+    dqpopt.parallel_update_duals();
+
+//    std::cout << "Iteration 0 : " << dqpopt.w << std::endl;
+
+    // Loop C-ADMM
+    for (int i=0; i<max_iter; ++i) {
+        dqpopt.parallel_update_primals();
+        dqpopt.update_globals();
+        dqpopt.parallel_update_duals();
+
+//        std::cout << "Iteration " << i+1 << " : " << dqpopt.w << std::endl;
+    }
+
+    bernCoeffComb = dqpopt.w; // Set equal to GLOBAL primal solution w
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    // std::cout << "Elapsed wall time: " << elapsed.count() << " seconds\n";
+
+    // Return true if successful
+    return true;
+
+
+//    if(exitflag != 0)
+//    {
+//        // std::cout << "BernsteinTrajectory: Combined OSQP solver failed with exitflag: " << exitflag << std::endl;
+//        return false;
+//    }
+//
+//    // RH: Edit success case such that our
+//    else if(solver->info->status_val == OSQP_SOLVED)
+//    {
+//        // std::cout << "BernsteinTrajectory: Combined OSQP solver solved successfully" << std::endl;
+//        primalSol = solver->solution->x; // primal solution
+//        dualSol = solver->solution->y; // dual solution
+//
+//        for(int i=0; i<n; i++)
+//        {
+//            bernCoeffComb(i) = primalSol[i]; 
+//        }
+//        // osqp_cleanup(solver);
+//
+//        auto end = std::chrono::high_resolution_clock::now();
+//        std::chrono::duration<double> elapsed = end - start;
+//        // std::cout << "Elapsed wall time: " << elapsed.count() << " seconds\n";
+//
+//        return true;
+//    }
 }
 
 bool BernsteinTrajectory::combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraints &eq_constraints_comb, 

@@ -54,6 +54,7 @@ find_path(OSQP_INCLUDE_DIR NAMES
 set(OSQP_INCLUDE_DIRS ${OSQP_INCLUDE_DIR} )
 
 list(APPEND TRAJECTORIES
+  src/optimizer.cpp
   src/bernstein_trajectory.cpp
   )
 
@@ -63,11 +64,11 @@ target_link_libraries(trjectoryLibNumOpt ${OSQP_INCLUDE_DIR} osqp::osqp osqp::os
 
 add_executable(trajectory_manager_num_opt src/trajectory_manager.cpp)
 ament_target_dependencies(trajectory_manager_num_opt ${dependencies})
-target_link_libraries(trajectory_manager_num_opt trjectoryLibNumOpt osqp::osqp)
+target_link_libraries(trajectory_manager_num_opt trjectoryLibNumOpt osqp::osqp Eigen3::Eigen TBB::tbb)
 
-add_executable(dqp src/optimizer.cpp)
-ament_target_dependencies(dqp ${dependencies})
-target_link_libraries(dqp trjectoryLibNumOpt Eigen3::Eigen TBB::tbb)
+#add_executable(dqp src/optimizer.cpp)
+#ament_target_dependencies(dqp ${dependencies})
+#target_link_libraries(dqp trjectoryLibNumOpt Eigen3::Eigen TBB::tbb)
 
 install(TARGETS
           trjectoryLibNumOpt

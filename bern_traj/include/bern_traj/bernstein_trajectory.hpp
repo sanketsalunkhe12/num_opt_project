@@ -3,6 +3,7 @@
 
 #include "trajectory.h"
 #include "osqp/osqp.h"
+#include "optimizer.hpp" // RH: Include our DQP implementation
 
 struct QPEqConstraints
 {
@@ -23,6 +24,7 @@ class BernsteinTrajectory : public Trajectory
 {
     public:
         BernsteinTrajectory(TrajectoryParams &bernstein_params_);
+        BernsteinTrajectory(TrajectoryParams &bernstein_params_, int solverType); // Adding overloaded constructor which initializes member var for solver type switch variable
         ~BernsteinTrajectory();
 
         Eigen::Vector3d getRefPosition(double &time_);
@@ -84,6 +86,7 @@ class BernsteinTrajectory : public Trajectory
         OSQPFloat *primalSol, *dualSol;
         Eigen::MatrixXd bernCoeff;
         std::vector<double> segmentTime;
+        int solverType;
 
         
         // Bernstein functions
@@ -111,6 +114,11 @@ class BernsteinTrajectory : public Trajectory
         // solving OSQP problem
         bool threadOSQPSolver(Eigen::MatrixXd &Q, QPEqConstraints &eq_constraints, QPIneqConstraints &ineq_constraints);//, 
                                 // rclcpp::Node::SharedPtr node_ptr);
+
+	// RH: Adding dedicated solver for DQP solving
+	bool combDQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraints &eq_constraints_comb, 
+                            QPIneqConstraints &ineq_constraints_comb);
+
         bool combOSQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraints &eq_constraints_comb, 
                             QPIneqConstraints &ineq_constraints_comb);//, rclcpp::Node::SharedPtr node_ptr);
 
