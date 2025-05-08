@@ -69,22 +69,22 @@ void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const
     n = A.cols();
 
     // optimization variables (primals, duals)
-    x = Eigen::VectorXd::Random(n);
-    nu = Eigen::VectorXd::Random(m);
-    z = Eigen::VectorXd::Random(m);
-    s = Eigen::VectorXd::Random(m);
-    w_tilde = Eigen::VectorXd::Random(n); // basically the local copy of relevant global parameters G(w, i, j) -> {w_l}
-    lamb = Eigen::VectorXd::Random(m);
-    y = Eigen::VectorXd::Random(n);
+    x = Eigen::VectorXd::Zero(n);
+    nu = Eigen::VectorXd::Zero(m);
+    z = Eigen::VectorXd::Zero(m);
+    s = Eigen::VectorXd::Zero(m);
+    w_tilde = Eigen::VectorXd::Zero(n); // basically the local copy of relevant global parameters G(w, i, j) -> {w_l}
+    lamb = Eigen::VectorXd::Zero(m);
+    y = Eigen::VectorXd::Zero(n);
 
     // For most of these vars, need a way to store the previous value for updates
-    x_prev = Eigen::VectorXd::Random(n);
-    nu_prev = Eigen::VectorXd::Random(m);
-    z_prev = Eigen::VectorXd::Random(m);
-    s_prev = Eigen::VectorXd::Random(m);
-    w_tilde_prev = Eigen::VectorXd::Random(n);
-    lamb_prev = Eigen::VectorXd::Random(m);
-    y_prev = Eigen::VectorXd::Random(n);
+    // x_prev = Eigen::VectorXd::Zero(n);
+    //nu_prev = Eigen::VectorXd::Zero(m);
+    //z_prev = Eigen::VectorXd::Zero(m);
+    s_prev = Eigen::VectorXd::Zero(m);
+    w_tilde_prev = Eigen::VectorXd::Zero(n);
+    lamb_prev = Eigen::VectorXd::Zero(m);
+    y_prev = Eigen::VectorXd::Zero(n);
 
     // Precompute the lhs for linear solver
     // std::cout << Q.rows() << " " << Q.cols() << std::endl;
@@ -98,6 +98,9 @@ void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const
 
     // Set up LDLT solver so we don't have to set it up every time
     ldlt_solver.compute(lhs);
+    if (ldlt_solver.info() != Eigen::Success) {
+            throw std::runtime_error("KKT factorization failed during DQPSolver initialization.");
+    }
 
     // Precompute a correctly sized rhs
     rhs = Eigen::VectorXd::Zero(n+m);
@@ -140,7 +143,9 @@ void DQPSolver::update_primals() {
     // std::cout << nu.size() << std::endl;
     // std::cout << lamb.size() << std::endl;
 
-    z = s + rhoinv * (nu - lamb); // Failing here, but all vectors in expression should be len m...
+    // save z
+    z_prev = z;
+    z = s + rhoinv * (nu - lamb);
     
     // Set the value, then clip using lower and upper bounds
     s_prev = s; // save old s
@@ -167,10 +172,10 @@ int DQPSolver::check_termination() {
 
 // Getters and setters
 float DQPSolver::getPrimalResidual() {
-    return 0.0;
+    return (A*x - z).norm();
 }
 float DQPSolver::getDualResidual() {
-    return 0.0;
+    return (-rho * A.transpose() * (z - z_prev)).norm();
 }
 
 // ************************************************************************************
@@ -207,6 +212,12 @@ void DistributedOptimizer::setup_solvers(int chunk_size, int chunk_stride) {
         auto qi = Q.block(i*chunk_stride, i*chunk_stride, chunk_size, chunk_size);
         auto ai = A.block(0, i*chunk_stride, A.rows(), chunk_size); // select vertical m x ni matrices from A
         m_solvers[i].init(qi, ai, lower, upper, alpha, rho, mu);
+
+	// Initialize primal to the correct view of w
+	m_solvers[i].w_tilde = w(Eigen::seqN(i*chunk_stride, chunk_size));
+        m_solvers[i].x = w(Eigen::seqN(i*chunk_stride, chunk_size));
+        m_solvers[i].z = w(Eigen::seqN(i*chunk_stride, chunk_size));
+        m_solvers[i].s = w(Eigen::seqN(i*chunk_stride, chunk_size));
 
         // Set local view up
         lv.emplace_back(i*chunk_stride, chunk_size);
@@ -313,7 +324,7 @@ Eigen::VectorXd DistributedOptimizer::getPrimalResiduals() {
 Eigen::VectorXd DistributedOptimizer::getDualResiduals() {
     Eigen::VectorXd tmp(m_nSolvers);
     for (int i=0; i<m_nSolvers; ++i) {
-        tmp[i] = m_solvers[i].getPrimalResidual();
+        tmp[i] = m_solvers[i].getDualResidual();
     }
     return tmp;
 }
@@ -349,7 +360,7 @@ int main(int argc, char* argv[]) {
     // Read the command line args (REQUIRED NOW!) and pass to solver setup
     dqpopt.setup_solvers(std::atoi(argv[2]), std::atoi(argv[3]));
 
-    // Currently block issues still causing problems, now in rhs calculation (line 114)
+    // Init
     dqpopt.parallel_update_primals();
     dqpopt.init_update_globals();
     dqpopt.parallel_update_duals();

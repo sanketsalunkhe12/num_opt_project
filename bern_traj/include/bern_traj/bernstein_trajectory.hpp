@@ -24,7 +24,7 @@ class BernsteinTrajectory : public Trajectory
 {
     public:
         BernsteinTrajectory(TrajectoryParams &bernstein_params_);
-        BernsteinTrajectory(TrajectoryParams &bernstein_params_, int solverType); // Adding overloaded constructor which initializes member var for solver type switch variable
+        BernsteinTrajectory(TrajectoryParams &bernstein_params_, int solver_Type); // Adding overloaded constructor which initializes member var for solver type switch variable
         ~BernsteinTrajectory();
 
         Eigen::Vector3d getRefPosition(double &time_);

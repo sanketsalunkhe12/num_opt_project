@@ -38,7 +38,7 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_)
     // waypointCount = bernstein_params_.waypoints.size();
 }
 
-BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_, int solverType)
+BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_, int solver_Type)
 {
     // std::cout << "BernsteinTrajectory: Constructor" << std::endl;
     
@@ -66,7 +66,7 @@ BernsteinTrajectory::BernsteinTrajectory(TrajectoryParams &bernstein_params_, in
     isObstacle = false;
 
     // RH: Adding switch flag for OSQP or DQP solver
-    solverType = solverType; // 0 is default = OSQP, 1 is DQP
+    solverType = solver_Type; // 0 is default = OSQP, 1 is DQP
 
     std::cout << "[DEBUG] BernsteinTrajectory::Constructor --- Solver Type: " << solverType << std::endl;
 
@@ -788,7 +788,7 @@ QPIneqConstraints BernsteinTrajectory::generateCombObstacleConstraint(const std:
                 comb_obst_constraints.f(sample + (seg_*sampleSize) + (sampleSize*segmentCount*obs_)) =  constant;
                 
                 // d vector
-                comb_obst_constraints.d(sample + (seg_*sampleSize) + (sampleSize*segmentCount*obs_)) = -OSQP_INFTY;
+                comb_obst_constraints.d(sample + (seg_*sampleSize) + (sampleSize*segmentCount*obs_)) = -std::numeric_limits<double>::infinity() ? solverType : -OSQP_INFTY;
             }
         }
     }
@@ -860,7 +860,7 @@ bool BernsteinTrajectory::combDQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraints
     // Make these configurable instead of hardcoded
     float alpha = 1.5;
     float rho = 0.3;
-    float mu = 0.3;
+    float mu = 0.99;
 
     // Construct a Distributed Optimizer and then run it (Q_comb is Q, combConstraints is A)
     DistributedOptimizer dqpopt = DistributedOptimizer(segmentCount-2, Q_comb, combConstraints, l, u, alpha, rho, mu);
@@ -870,6 +870,9 @@ bool BernsteinTrajectory::combDQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraints
 
     // Init w to bernCoeffComb interpolation guess
     dqpopt.w = bernCoeffComb; // Ugh I may need to double check this due to flattening vs rectangular coeff matrix :(
+
+    // RH: print initial value of w
+    std::cout << "INIT W = " << dqpopt.w.transpose() << std::endl;
 
     dqpopt.parallel_update_primals();
     dqpopt.init_update_globals();
@@ -881,6 +884,9 @@ bool BernsteinTrajectory::combDQPSolver(Eigen::MatrixXd &Q_comb, QPEqConstraints
     for (int i=0; i<max_iter; ++i) {
         dqpopt.parallel_update_primals();
         dqpopt.update_globals();
+
+        std::cout << "ITER " << i << " W = " << dqpopt.w.transpose() << std::endl;
+
         dqpopt.parallel_update_duals();
 
 //        std::cout << "Iteration " << i+1 << " : " << dqpopt.w << std::endl;
