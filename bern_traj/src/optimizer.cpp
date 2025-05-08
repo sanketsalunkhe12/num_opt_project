@@ -1,8 +1,27 @@
 #include "bern_traj/optimizer.hpp"
 #include <iostream>
-// ^Should include all relevant types I think?
+#include <fstream>
+#include <string>
 
-// RH: ASSUMING ROW MAJOR MATRICES BUT SHOULD ALTER TO MATCH BERNSTEIN FILE!!!
+// Utility for csv writing
+void write_csv(const std::string& filename, const std::vector<std::vector<double>>& data) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open " << filename << " for writing.\n";
+        return;
+    }
+
+    for (const auto& row : data) {
+        for (std::size_t i = 0; i < row.size(); ++i) {
+            file << row[i];
+            if (i < row.size() - 1)
+                file << ",";
+        }
+        file << "\n";
+    }
+
+    file.close();
+}
 
 // **********************************************************************************************
 // **********************************************************************************************
@@ -52,7 +71,7 @@ GlobalIndexMap map_global_to_local_indices(
 DQPSolver::DQPSolver() {}
 
 // Going with a non-templated version where we use Ref and double type matrices
-void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const Eigen::VectorXd &_lower, const Eigen::VectorXd &_upper, const float _alpha, const float _rho, const float _mu) {
+void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const Eigen::VectorXd &_lower, const Eigen::VectorXd &_upper, const double _alpha, const double _rho, const double _mu) {
     Q = _Q; 
     A=_A;
     lower=_lower; 
@@ -156,6 +175,10 @@ void DQPSolver::update_global(const Eigen::VectorXd &w_new) {
 void DQPSolver::update_duals() {
     // lamb = (lamb + rho * (alpha * z + (1 - alpha)*s_prev - s)).eval();
     // y = (y + mu * (alpha * x + (1 - alpha)*w_tilde_prev - w_tilde)).eval();
+    
+    // save y
+    y_prev = y;
+
     lamb = lamb + rho * (alpha * z + (1 - alpha)*s_prev - s);
     y = y + mu * (alpha * x + (1 - alpha)*w_tilde_prev - w_tilde);
 }
@@ -166,16 +189,16 @@ int DQPSolver::check_termination() {
 } 
 
 // Getters and setters
-float DQPSolver::getPrimalResidual() {
-    return 0.0;
+double DQPSolver::getPrimalResidual() {
+    return (A*x - y).norm();
 }
-float DQPSolver::getDualResidual() {
-    return 0.0;
+double DQPSolver::getDualResidual() {
+    return (-rho * A.transpose() * (y - y_prev)).norm();
 }
 
 // ************************************************************************************
 // High-Level DQP Controller
-DistributedOptimizer::DistributedOptimizer(const int &nSolvers, const Eigen::MatrixXd &Q, const Eigen::MatrixXd &A, const Eigen::VectorXd &lower, const Eigen::VectorXd &upper, const float alpha, const float rho, const float mu) :  m_nSolvers(nSolvers), Q(Q), A(A), lower(lower), upper(upper), alpha(alpha), rho(rho), mu(mu) {
+DistributedOptimizer::DistributedOptimizer(const int &nSolvers, const Eigen::MatrixXd &Q, const Eigen::MatrixXd &A, const Eigen::VectorXd &lower, const Eigen::VectorXd &upper, const double alpha, const double rho, const double mu) :  m_nSolvers(nSolvers), Q(Q), A(A), lower(lower), upper(upper), alpha(alpha), rho(rho), mu(mu) {
     // Initialize vector of pointers to un-setup DQPSolvers
     m_solvers.resize(m_nSolvers);
     w = Eigen::VectorXd::Zero(A.cols()); // Init global vector of length n
@@ -230,8 +253,8 @@ void DistributedOptimizer::init_update_globals() {
     // For each element l of w
     // Extract values {x_i} and {y_i} from each solver j for all i and all j
 
-    float numer = 0.0;
-    float denom = 0.0; // okay because this will never be zero. Every w_l has at least one local var
+    double numer = 0.0;
+    double denom = 0.0; // okay because this will never be zero. Every w_l has at least one local var
     std::pair<int, int> p;
     for (int l=0; l<w.size(); ++l) {
         for (auto p : Gmap[l]) {
@@ -259,8 +282,8 @@ void DistributedOptimizer::update_globals() {
     // For each element l of w
     // Extract values {x_i} from each solver j for all i and all j
 
-    float numer = 0.0;
-    float denom = 0.0; // okay because this will never be zero. Every w_l has at least one local var
+    double numer = 0.0;
+    double denom = 0.0; // okay because this will never be zero. Every w_l has at least one local var
     std::pair<int, int> p;
     for (int l=0; l<w.size(); ++l) {
         for (auto p : Gmap[l]) {
@@ -273,7 +296,7 @@ void DistributedOptimizer::update_globals() {
         }
 
         // Slight possibility that denom is actually zero because of incorrect mapping. Should NOT update w_l in that case
-        if (std::fabs(denom) > std::numeric_limits<float>::epsilon()) {
+        if (std::fabs(denom) > std::numeric_limits<double>::epsilon()) {
             w[l] = alpha * numer / denom + (1 - alpha) * w[l];
         }
 
@@ -300,42 +323,48 @@ void DistributedOptimizer::parallel_update_duals() {
 // Setters and getters
 
 // Base residual calculation on OSQP?
-// This should return norm of x-primal residual
-Eigen::VectorXd DistributedOptimizer::getPrimalResiduals() {
+// This should return norm of primal residual
+double DistributedOptimizer::getPrimalResiduals() {
     Eigen::VectorXd tmp(m_nSolvers);
     for (int i=0; i<m_nSolvers; ++i) {
         tmp[i] = m_solvers[i].getPrimalResidual();
     }
-    return tmp;
+    return tmp.mean();
 } 
 
-// This should return norm of y-dual residual
-Eigen::VectorXd DistributedOptimizer::getDualResiduals() {
+// This should return norm of dual residual
+double DistributedOptimizer::getDualResiduals() {
     Eigen::VectorXd tmp(m_nSolvers);
     for (int i=0; i<m_nSolvers; ++i) {
-        tmp[i] = m_solvers[i].getPrimalResidual();
+        tmp[i] = m_solvers[i].getDualResidual();
     }
-    return tmp;
+    return tmp.mean();
 }
 
 int main(int argc, char* argv[]) {
     std::cout << "This is a basic example showing the syntax for this DQP C-ADMM solver: " << std::endl;
 
+    int num_solvers = std::atoi(argv[1]);
+    int chunk_size = std::atoi(argv[2]);
+    int stride_size = std::atoi(argv[3]);
+    int n = std::atoi(argv[4]); // Q Matrix Size
+    int m = 30; // Constraints
+
     // Simple test with basic quadratic objective function (just make a gaussian PSD for Q) and constraints which are just an Identity matrix with some noise added?
-    Eigen::MatrixXd rand = Eigen::MatrixXd::Random(36,36);
+    Eigen::MatrixXd rand = Eigen::MatrixXd::Random(n,n);
     Eigen::MatrixXd Q = (10*rand.transpose() * 10*rand).eval();
-    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(36,36);
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(30,n); // fixed size m
     A(25,25) = 10.;
     A(15,25) = 0.1432432;
     A(5,10) = 5.;
     A(27,18) = 2.;
     A(29,13) = 0.5;
-    Eigen::VectorXd u = (Eigen::VectorXd::Random(36) * 3).cwiseAbs();
+    Eigen::VectorXd u = (Eigen::VectorXd::Random(m) * 3).cwiseAbs();
     Eigen::VectorXd l = -u;
 
-    float alpha = 1.5; 
-    float rho = 0.3;
-    float mu = 0.3;
+    double alpha = 1.5; 
+    double rho = 0.7;
+    double mu = 0.99;
 
     // Print all these out?
     // std::cout << Q << std::endl;
@@ -343,28 +372,51 @@ int main(int argc, char* argv[]) {
     // std::cout << u << std::endl;
     // std::cout << l << std::endl;
 
+    // Set up a save file for objective function 0.5 x.T Q x, primal res, and dual res traces
+    std::string fname = argv[5]; // final argument is filepath
+
+
     // Construct a Distributed Optimizer and then run it
-    DistributedOptimizer dqpopt = DistributedOptimizer(std::atoi(argv[1]), Q, A, l, u, alpha, rho, mu);
+    DistributedOptimizer dqpopt = DistributedOptimizer(num_solvers, Q, A, l, u, alpha, rho, mu);
 
     // Read the command line args (REQUIRED NOW!) and pass to solver setup
-    dqpopt.setup_solvers(std::atoi(argv[2]), std::atoi(argv[3]));
+    dqpopt.setup_solvers(chunk_size, stride_size);
 
     // Currently block issues still causing problems, now in rhs calculation (line 114)
     dqpopt.parallel_update_primals();
     dqpopt.init_update_globals();
     dqpopt.parallel_update_duals();
 
-    std::cout << "Iteration 0 : " << dqpopt.w << std::endl;
+//    std::cout << "Iteration 0 : " << dqpopt.w << std::endl;
 
-   int max_iter = 10;
+    int max_iter = 1000;
+    std::vector<std::vector<double>> traces; // stores max_iter number of length 3 vectors containing obj func, primal res, dual res
+    std::vector<double> trace(3);
+
+    trace[0] = dqpopt.w.transpose() * Q * dqpopt.w;
+    trace[1] = dqpopt.getPrimalResiduals();
+    trace[2] = dqpopt.getDualResiduals();
+
+    traces.push_back(trace);
+
+    // Loop C-ADMM
+    for (int i=0; i<max_iter; ++i) {
+        dqpopt.parallel_update_primals();
+        dqpopt.update_globals();
+        dqpopt.parallel_update_duals();
+
+        trace[0] = dqpopt.w.transpose() * Q * dqpopt.w;
+        trace[1] = dqpopt.getPrimalResiduals();
+        trace[2] = dqpopt.getDualResiduals();
+
+        traces.push_back(trace);
+
    
-   // Loop C-ADMM
-   for (int i=0; i<max_iter; ++i) {
-       dqpopt.parallel_update_primals();
-       dqpopt.update_globals();
-       dqpopt.parallel_update_duals();
-   
-       std::cout << "Iteration " << i+1 << " : " << dqpopt.w << std::endl;
+//        std::cout << "Iteration " << i+1 << " : " << dqpopt.w << std::endl;
    }
+
+   // Write out csv file
+   write_csv(fname, traces);
+   return 0;
 
 }

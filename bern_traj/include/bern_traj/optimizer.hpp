@@ -16,7 +16,7 @@ class DQPSolver
 
         // Also set iteration number to start (should we actually care about residuals? Probably...)
         // We're definitely not going to compute whether the problem is feasible or not, that's for sure
-        void init(const Eigen::MatrixXd &Q, const Eigen::MatrixXd &A, const Eigen::VectorXd &lower, const Eigen::VectorXd &upper, const float alpha, const float rho, const float mu); // Pass in all relevant data and initialize all member vector/matrix variables with correct sizes
+        void init(const Eigen::MatrixXd &Q, const Eigen::MatrixXd &A, const Eigen::VectorXd &lower, const Eigen::VectorXd &upper, const double alpha, const double rho, const double mu); // Pass in all relevant data and initialize all member vector/matrix variables with correct sizes
         void compute_KKT_rhs();
         void solve_KKT();
         void update_primals(); // Compute new rhs, solve KKT, set x and nu, update z, update s
@@ -25,8 +25,8 @@ class DQPSolver
         int check_termination(); // should return 0 if not yet terminated, or 1 if terminated
         
         // Getters and setters
-        float getPrimalResidual();
-        float getDualResidual();
+        double getPrimalResidual();
+        double getDualResidual();
     
         // Data and constraints
         int m;
@@ -37,12 +37,12 @@ class DQPSolver
         // Lower and upper bounds stand in for the "b" vector in DQP, where s is projected onto these box constraints via min max clip operation
         Eigen::VectorXd lower; 
         Eigen::VectorXd upper; 
-        float alpha = 1.0; // step size
-        float rho = 1.0; // penalty param: constant, not adapting this at the moment
-        float mu = 1.0; // penalty param: constant, not adapting this at the moment
+        double alpha = 1.0; // step size
+        double rho = 1.0; // penalty param: constant, not adapting this at the moment
+        double mu = 1.0; // penalty param: constant, not adapting this at the moment
 
         // cached variables
-        float rhoinv = 1.0; // 1/rho
+        double rhoinv = 1.0; // 1/rho
         Eigen::MatrixXd lhs;
         Eigen::VectorXd rhs;
         Eigen::LDLT<Eigen::MatrixXd> ldlt_solver;
@@ -78,7 +78,7 @@ using GlobalIndexMap = std::unordered_map<int, std::vector<std::pair<int, int>>>
 class DistributedOptimizer
 {
     public:
-        DistributedOptimizer(const int &nSolvers, const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const Eigen::VectorXd &_lower, const Eigen::VectorXd &_upper, const float _alpha, const float _rho, const float _mu);
+        DistributedOptimizer(const int &nSolvers, const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const Eigen::VectorXd &_lower, const Eigen::VectorXd &_upper, const double _alpha, const double _rho, const double _mu);
         ~DistributedOptimizer();
 
         // Set up N solvers = (# segments - 2)
@@ -102,8 +102,8 @@ class DistributedOptimizer
         // void join_threads();
 
         // Setters and getters
-        Eigen::VectorXd getPrimalResiduals(); // Just a vector of x?
-        Eigen::VectorXd getDualResiduals(); // just a vector of y?
+        double getPrimalResiduals(); // Just a vector of x?
+        double getDualResiduals(); // just a vector of y?
 
         // Public member variables
         int m_nSolvers = 1; // default to a single solver (which should still work...)
@@ -117,9 +117,9 @@ class DistributedOptimizer
         const Eigen::VectorXd lower;
         const Eigen::VectorXd upper;
 
-        float alpha = 1.0; // step size
-        float rho = 1.0; // penalty param: constant, not adapting this at the moment
-        float mu = 1.0; // penalty param: constant, not adapting this at the moment
+        double alpha = 1.0; // step size
+        double rho = 1.0; // penalty param: constant, not adapting this at the moment
+        double mu = 1.0; // penalty param: constant, not adapting this at the moment
 
         Eigen::VectorXd w;
         GlobalIndexMap Gmap;
