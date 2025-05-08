@@ -87,6 +87,10 @@ void DQPSolver::init(const Eigen::MatrixXd &_Q, const Eigen::MatrixXd &_A, const
     m = A.rows();
     n = A.cols();
 
+    // Sanity check:
+    std::cout << "A rows = m = len constraints = " << m << std::endl;
+    std::cout << "A columns = n = len optimization vars = " << n << std::endl;
+
     // optimization variables (primals, duals)
     x = Eigen::VectorXd::Random(n);
     nu = Eigen::VectorXd::Random(m);
@@ -190,10 +194,17 @@ int DQPSolver::check_termination() {
 
 // Getters and setters
 double DQPSolver::getPrimalResidual() {
-    return (A*x - y).norm();
+
+    std::cout << A.cols() << A.rows() << std::endl;
+    std::cout << x.size() << std::endl;
+    std::cout << y.size() << std::endl;
+
+    double res = ((A*x) - z).norm();
+    return res;
 }
 double DQPSolver::getDualResidual() {
-    return (-rho * A.transpose() * (y - y_prev)).norm();
+    double res = (-rho * A.transpose() * (y - y_prev)).norm(); // problem is something with the arithmetic here
+    return res;
 }
 
 // ************************************************************************************
@@ -347,19 +358,19 @@ int main(int argc, char* argv[]) {
     int num_solvers = std::atoi(argv[1]);
     int chunk_size = std::atoi(argv[2]);
     int stride_size = std::atoi(argv[3]);
-    int n = std::atoi(argv[4]); // Q Matrix Size
-    int m = 30; // Constraints
+    int Q_size = std::atoi(argv[4]); // Q Matrix Size
+    int A_size = 30; // Constraints
 
     // Simple test with basic quadratic objective function (just make a gaussian PSD for Q) and constraints which are just an Identity matrix with some noise added?
-    Eigen::MatrixXd rand = Eigen::MatrixXd::Random(n,n);
+    Eigen::MatrixXd rand = Eigen::MatrixXd::Random(Q_size,Q_size);
     Eigen::MatrixXd Q = (10*rand.transpose() * 10*rand).eval();
-    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(30,n); // fixed size m
+    Eigen::MatrixXd A = Eigen::MatrixXd::Zero(A_size,Q_size); // fixed size m
     A(25,25) = 10.;
     A(15,25) = 0.1432432;
     A(5,10) = 5.;
     A(27,18) = 2.;
     A(29,13) = 0.5;
-    Eigen::VectorXd u = (Eigen::VectorXd::Random(m) * 3).cwiseAbs();
+    Eigen::VectorXd u = (Eigen::VectorXd::Random(A_size) * 3).cwiseAbs();
     Eigen::VectorXd l = -u;
 
     double alpha = 1.5; 
